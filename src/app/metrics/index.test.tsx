@@ -4,7 +4,7 @@ import MicrosoftClarity from './MicrosoftClarity';
 
 // Mock do componente MicrosoftClarity
 jest.mock('./MicrosoftClarity', () => {
-  return jest.fn(() => <div data-testid="mock-clarity" />);
+  return jest.fn(() => null);
 });
 
 describe('Metrics Component', () => {

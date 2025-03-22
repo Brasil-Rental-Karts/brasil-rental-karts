@@ -1,14 +1,13 @@
 import { render } from '@testing-library/react';
 import MicrosoftClarity from './MicrosoftClarity';
+import Clarity from '@microsoft/clarity';
 
-// Mock de next/script para evitar carregamento real do script durante os testes
-jest.mock('next/script', () => {
-  return function Script(props: any) {
-    // Armazenar o dangerouslySetInnerHTML como atributo data para poder testar
-    const dataHtml = props.dangerouslySetInnerHTML?.__html;
-    return <script data-testid="clarity-script" data-html={dataHtml} {...props} />;
-  };
-});
+// Mock do Clarity
+jest.mock('@microsoft/clarity', () => ({
+  init: jest.fn(),
+  event: jest.fn(),
+  setTag: jest.fn(),
+}));
 
 describe('MicrosoftClarity Component', () => {
   const originalEnv = process.env;
@@ -17,6 +16,7 @@ describe('MicrosoftClarity Component', () => {
     jest.resetModules();
     // Limpar os mocks do console
     jest.spyOn(console, 'warn').mockImplementation(() => {});
+    jest.spyOn(console, 'error').mockImplementation(() => {});
     // Backup do NODE_ENV original
     process.env = { ...originalEnv };
   });
@@ -27,40 +27,57 @@ describe('MicrosoftClarity Component', () => {
     jest.restoreAllMocks();
   });
 
-  it('não renderiza nada em ambiente de desenvolvimento', () => {
+  it('não inicializa o Clarity em ambiente de desenvolvimento', () => {
     // Simular ambiente de desenvolvimento
     Object.defineProperty(process.env, 'NODE_ENV', { value: 'development' });
     
-    const { container } = render(<MicrosoftClarity />);
-    expect(container.firstChild).toBeNull();
+    render(<MicrosoftClarity />);
+    expect(Clarity.init).not.toHaveBeenCalled();
   });
 
-  it('não renderiza nada se o ID do Clarity não estiver definido', () => {
+  it('não inicializa o Clarity se o ID não estiver definido', () => {
     // Simular ambiente de produção sem ID do Clarity
     Object.defineProperty(process.env, 'NODE_ENV', { value: 'production' });
     process.env.NEXT_PUBLIC_MICROSOFT_CLARITY = '';
     
-    const { container } = render(<MicrosoftClarity />);
-    expect(container.firstChild).toBeNull();
+    render(<MicrosoftClarity />);
+    expect(Clarity.init).not.toHaveBeenCalled();
     expect(console.warn).toHaveBeenCalledWith(
       'Microsoft Clarity ID não configurado. Adicione NEXT_PUBLIC_MICROSOFT_CLARITY ao seu .env.local'
     );
   });
 
-  it('renderiza o script do Clarity em ambiente de produção com ID configurado', () => {
+  it('inicializa o Clarity em ambiente de produção com ID configurado', () => {
     // Simular ambiente de produção com ID do Clarity
     Object.defineProperty(process.env, 'NODE_ENV', { value: 'production' });
     process.env.NEXT_PUBLIC_MICROSOFT_CLARITY = 'test-clarity-id';
     
-    const { getByTestId } = render(<MicrosoftClarity />);
-    const scriptElement = getByTestId('clarity-script');
+    render(<MicrosoftClarity />);
     
-    expect(scriptElement).toBeInTheDocument();
-    expect(scriptElement.getAttribute('id')).toBe('microsoft-clarity-init');
-    expect(scriptElement.getAttribute('strategy')).toBe('afterInteractive');
+    // Verifica se o Clarity.init foi chamado com o ID correto
+    expect(Clarity.init).toHaveBeenCalledWith('test-clarity-id');
     
-    // Verifica se o HTML contém o ID do Clarity
-    const htmlContent = scriptElement.getAttribute('data-html');
-    expect(htmlContent).toContain('test-clarity-id');
+    // Verifica se o evento de inicialização foi disparado
+    expect(Clarity.event).toHaveBeenCalledWith('clarity_initialized');
+    
+    // Verifica se a tag de versão foi configurada
+    expect(Clarity.setTag).toHaveBeenCalledWith('app_version', 'development');
+  });
+  
+  it('trata erros durante a inicialização do Clarity', () => {
+    // Simular ambiente de produção com ID do Clarity
+    Object.defineProperty(process.env, 'NODE_ENV', { value: 'production' });
+    process.env.NEXT_PUBLIC_MICROSOFT_CLARITY = 'test-clarity-id';
+    
+    // Simular um erro durante a inicialização
+    const error = new Error('Teste de erro de inicialização');
+    (Clarity.init as jest.Mock).mockImplementationOnce(() => {
+      throw error;
+    });
+    
+    render(<MicrosoftClarity />);
+    
+    // Verifica se o erro foi registrado
+    expect(console.error).toHaveBeenCalledWith('Erro ao inicializar o Microsoft Clarity:', error);
   });
 }); 

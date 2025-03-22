@@ -1,36 +1,43 @@
 'use client'
 
-import Script from "next/script"
+import { useEffect } from 'react'
+import Clarity from '@microsoft/clarity'
 
 const MicrosoftClarity = () => {
-    // Verificar se estamos em produção para evitar rastreamento em ambiente de desenvolvimento
-    if (process.env.NODE_ENV !== 'production') {
-        return null
-    }
+    useEffect(() => {
+        // Verificar se estamos em produção para evitar rastreamento em ambiente de desenvolvimento
+        if (process.env.NODE_ENV !== 'production') {
+            return
+        }
 
-    const clarityId = process.env.NEXT_PUBLIC_MICROSOFT_CLARITY
+        const clarityId = process.env.NEXT_PUBLIC_MICROSOFT_CLARITY
 
-    // Se não houver ID do Clarity configurado, não renderizar o script
-    if (!clarityId) {
-        console.warn('Microsoft Clarity ID não configurado. Adicione NEXT_PUBLIC_MICROSOFT_CLARITY ao seu .env.local')
-        return null
-    }
+        // Se não houver ID do Clarity configurado, não inicializar
+        if (!clarityId) {
+            console.warn('Microsoft Clarity ID não configurado. Adicione NEXT_PUBLIC_MICROSOFT_CLARITY ao seu .env.local')
+            return
+        }
 
-    return (
-        <Script
-            id="microsoft-clarity-init"
-            strategy="afterInteractive"
-            dangerouslySetInnerHTML={{
-                __html: `
-                (function(c,l,a,r,i,t,y){
-                    c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};
-                    t=l.createElement(r);t.async=1;t.src="https://www.clarity.ms/tag/"+i;
-                    y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y);
-                })(window, document, "clarity", "script", "${clarityId}");
-                `,
-            }}
-        />
-    )
+        // Inicializar o Clarity com o ID do projeto
+        try {
+            Clarity.init(clarityId)
+            
+            // Evento personalizado para marcar que o Clarity foi inicializado
+            Clarity.event('clarity_initialized')
+            
+            // Opcionalmente, adicione uma tag para identificar a versão do site
+            Clarity.setTag('app_version', process.env.NEXT_PUBLIC_APP_VERSION || 'development')
+        } catch (error) {
+            console.error('Erro ao inicializar o Microsoft Clarity:', error)
+        }
+
+        // Não há método para limpar o Clarity na API oficial
+        // Se for necessário desabilitar o Clarity em tempo de execução, 
+        // pode-se usar Clarity.consent(false) em outro componente
+    }, [])
+
+    // Este componente não renderiza nada visualmente
+    return null
 }
 
 export default MicrosoftClarity 
