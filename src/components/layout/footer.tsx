@@ -2,8 +2,6 @@ import Link from "next/link"
 import Image from "next/image"
 import { Mail, MapPin, Instagram, Youtube, MessageCircle } from "lucide-react"
 
-import { Button } from "@/components/ui/button"
-
 export function Footer() {
   const currentYear = new Date().getFullYear()
   
