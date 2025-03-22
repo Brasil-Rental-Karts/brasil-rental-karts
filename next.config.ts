@@ -7,6 +7,16 @@ const nextConfig: NextConfig = {
     // Ignora os erros de ESLint durante o build para arquivos de teste
     ignoreDuringBuilds: true,
   },
+  // Configuração para o Turbopack
+  experimental: {
+    turbo: {
+      // Configurações específicas para Turbopack
+      resolveAlias: {
+        // Mapeamentos específicos para garantir compatibilidade com Sentry
+        "@sentry/nextjs": "@sentry/nextjs"
+      }
+    }
+  }
 };
 
 // Opções do Sentry para integração com Next.js
