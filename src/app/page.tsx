@@ -126,7 +126,7 @@ const features = [
   },
   {
     title: "Perfis de Pilotos",
-    description: "Cadastro de pilotos com histórico de resultados, estatísticas de desempenho e ranking na comunidade de kartismo rental.",
+    description: "Cadastro de pilotos com histórico de resultados, estatísticas de desempenho e ranking na comunidade de kart rental.",
     icon: <UserRound className="h-12 w-12 p-2.5 rounded-full bg-primary/15 text-primary" />,
   },
   {
