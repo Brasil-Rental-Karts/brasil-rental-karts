@@ -1,12 +1,27 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import * as Sentry from "@sentry/nextjs";
+import { useRouter } from "next/navigation";
 
-// Página de exemplo para testar o Sentry
+// Página de exemplo para testar o Sentry - apenas para ambiente de desenvolvimento
 export default function SentryExamplePage() {
   const [errorTriggered, setErrorTriggered] = useState(false);
+  const [isDevEnvironment, setIsDevEnvironment] = useState(false);
+  const router = useRouter();
+  
+  useEffect(() => {
+    // Verificar se estamos em ambiente de desenvolvimento
+    const isDev = process.env.NODE_ENV === 'development';
+    setIsDevEnvironment(isDev);
+    
+    // Redirecionar para a home se não estiver em ambiente de desenvolvimento
+    if (!isDev) {
+      console.log("Redirecionando para home: esta página só está disponível em ambiente de desenvolvimento");
+      router.push('/');
+    }
+  }, [router]);
   
   const triggerClientError = () => {
     try {
@@ -45,9 +60,19 @@ export default function SentryExamplePage() {
     }
   };
   
+  // Se não estiver em ambiente de desenvolvimento, mostra mensagem de carregamento
+  // (o redirecionamento acontecerá via useEffect)
+  if (!isDevEnvironment) {
+    return <div className="container mx-auto py-10">Redirecionando...</div>;
+  }
+  
   return (
     <div className="container mx-auto py-10">
       <h1 className="text-2xl font-bold mb-6">Página de teste do Sentry</h1>
+      
+      <div className="p-4 mb-8 border rounded-lg bg-yellow-50 border-yellow-200">
+        <p className="text-yellow-800 font-medium">⚠️ Esta página só está disponível em ambiente de desenvolvimento</p>
+      </div>
       
       <div className="mb-8 p-6 border rounded-lg bg-card">
         <h2 className="text-xl font-semibold mb-4">Informações de depuração</h2>

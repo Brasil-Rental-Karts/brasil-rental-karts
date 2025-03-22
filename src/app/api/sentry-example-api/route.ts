@@ -3,8 +3,26 @@ import * as Sentry from "@sentry/nextjs";
 
 export const dynamic = "force-dynamic";
 
-// A faulty API route to test Sentry's error monitoring
+// A faulty API route to test Sentry's error monitoring - apenas para ambiente de desenvolvimento
 export function GET() {
+  // Verificar se estamos em ambiente de desenvolvimento
+  const isDev = process.env.NODE_ENV === 'development';
+  
+  // Se não for ambiente de desenvolvimento, retornar 404
+  if (!isDev) {
+    console.log("Tentativa de acesso à API de teste do Sentry em ambiente de produção");
+    return new NextResponse(
+      JSON.stringify({
+        error: "Not Found",
+        message: "Esta API de teste só está disponível em ambiente de desenvolvimento",
+      }),
+      {
+        status: 404,
+        headers: { "Content-Type": "application/json" },
+      }
+    );
+  }
+  
   try {
     console.log("Iniciando API de exemplo do Sentry");
     
