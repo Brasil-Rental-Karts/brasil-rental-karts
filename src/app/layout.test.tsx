@@ -12,6 +12,11 @@ jest.mock('@/components/layout/footer', () => ({
   Footer: () => <footer data-testid="footer-mock">Footer Mock</footer>,
 }));
 
+// Mock para o componente Analytics do Vercel
+jest.mock('@vercel/analytics/react', () => ({
+  Analytics: () => <div data-testid="analytics-mock">Analytics Mock</div>,
+}));
+
 // Mock para next/font/google
 jest.mock('next/font/google', () => ({
   Geist: jest.fn().mockReturnValue({
@@ -41,6 +46,7 @@ const SimplifiedRootLayout = () => {
       <nav data-testid="navbar-component">{layout.props.children[1].props.children[0]}</nav>
       <main data-testid="main-component">{layout.props.children[1].props.children[1].props.children}</main>
       <footer data-testid="footer-component">{layout.props.children[1].props.children[2]}</footer>
+      <div data-testid="analytics-component">{layout.props.children[1].props.children[3]}</div>
     </div>
   );
 };
@@ -68,6 +74,8 @@ describe('RootLayout Component', () => {
     expect(screen.getByTestId('navbar-component')).toBeInTheDocument();
     expect(screen.getByTestId('main-component')).toBeInTheDocument();
     expect(screen.getByTestId('footer-component')).toBeInTheDocument();
+    expect(screen.getByTestId('analytics-component')).toBeInTheDocument();
+    expect(screen.getByTestId('analytics-mock')).toBeInTheDocument();
   });
   
   it('uses correct font configurations', () => {
