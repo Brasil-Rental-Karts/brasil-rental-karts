@@ -1,34 +1,55 @@
-import type { NextConfig } from "next";
-import { withSentryConfig } from "@sentry/nextjs";
+/** @type {import('next').NextConfig} */
 
-// Configuração base do Next.js
-const nextConfig: NextConfig = {
+import { withSentryConfig } from "@sentry/nextjs";
+import type { Configuration as WebpackConfig } from 'webpack';
+
+const nextConfig = {
+  experimental: {
+    // Permite que as variáveis de ambiente sejam definidas no lado do cliente
+    // mesmo em tempo de desenvolvimento
+    turbo: {
+      resolveAlias: {
+        '@sentry/nextjs': '@sentry/nextjs',
+      }
+    },
+  },
+  // Configurações do ESLint
   eslint: {
-    // Ignora os erros de ESLint durante o build para arquivos de teste
     ignoreDuringBuilds: true,
   },
-  // Configuração para o Turbopack
-  experimental: {
-    turbo: {
-      // Configurações específicas para Turbopack
-      resolveAlias: {
-        // Mapeamentos específicos para garantir compatibilidade com Sentry
-        "@sentry/nextjs": "@sentry/nextjs"
-      }
-    }
-  }
+  // Configurações do Sentry integradas diretamente
+  sentry: {
+    hideSourceMaps: true, // Oculta os source maps em produção
+    disableServerWebpackPlugin: true, // Desabilita o plugin do Webpack para o servidor
+    disableClientWebpackPlugin: true, // Desabilita o plugin do Webpack para o cliente
+  },
+  env: {
+    // Garante que variáveis de ambiente críticas estejam disponíveis no cliente
+    NEXT_PUBLIC_SENTRY_DSN: process.env.NEXT_PUBLIC_SENTRY_DSN,
+    NEXT_PUBLIC_SENTRY_URL: process.env.NEXT_PUBLIC_SENTRY_URL,
+  },
+  webpack: (config: WebpackConfig) => {
+    // Ajusta a configuração do webpack para expor variáveis de ambiente
+    return config;
+  },
 };
 
-// Opções do Sentry para integração com Next.js
+// Configurações do Sentry para o withSentryConfig
 const sentryWebpackPluginOptions = {
+  // Configurações adicionais para o plugin do Webpack do Sentry
   org: process.env.SENTRY_ORG,
   project: process.env.SENTRY_PROJECT,
-  silent: true, // Suprime os logs do SDK durante build
-  hideSourceMaps: true, // Oculta sourcemaps em produção
+  
+  // Desabilita o upload de source maps durante o build
+  silent: true, // Silencia os logs do Sentry CLI
+  disableSourceMapUpload: true, // Desabilita o upload de source maps
+  sourcemaps: {
+    assets: './**', // Caminho para os assets
+    ignore: ['node_modules/**/*'],
+  },
 };
 
-// Exportamos a configuração com Sentry
 export default withSentryConfig(
-  nextConfig, 
+  nextConfig,
   sentryWebpackPluginOptions
 );
