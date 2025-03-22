@@ -4,6 +4,9 @@
 
 import * as Sentry from "@sentry/nextjs";
 
+// Verificar ambiente
+const isDev = process.env.NODE_ENV === 'development';
+
 Sentry.init({
   dsn: process.env.NEXT_PUBLIC_SENTRY_DSN,
 
@@ -11,11 +14,20 @@ Sentry.init({
   tracesSampleRate: 1.0,
 
   // Setting this option to true will print useful information to the console while you're setting up Sentry.
-  debug: true,
+  debug: isDev,
   
   // Defina o ambiente (development, production)
   environment: process.env.NODE_ENV,
   
   // Habilita o Sentry em qualquer ambiente para testes
   enabled: true,
+  
+  // Configura o comportamento de acordo com o ambiente
+  beforeSend(event) {
+    // Registra logs apenas em ambiente de desenvolvimento
+    if (isDev) {
+      console.log(`Sentry capturou um evento no servidor: ${event.event_id}`);
+    }
+    return event;
+  },
 });

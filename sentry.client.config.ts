@@ -5,7 +5,10 @@
 import * as Sentry from "@sentry/nextjs";
 
 // Log para debug - verificar se a variável de ambiente está disponível
-console.log("DSN disponível no cliente:", !!process.env.NEXT_PUBLIC_SENTRY_DSN);
+const isDev = process.env.NODE_ENV === 'development';
+if (isDev) {
+  console.log("DSN disponível no cliente:", !!process.env.NEXT_PUBLIC_SENTRY_DSN);
+}
 
 Sentry.init({
   dsn: process.env.NEXT_PUBLIC_SENTRY_DSN,
@@ -26,6 +29,17 @@ Sentry.init({
   // Define a versão do release, útil para identificar quais commits contêm o erro
   release: process.env.NEXT_PUBLIC_VERCEL_GIT_COMMIT_SHA || 'dev',
   
-  // DEBUG para ajudar a identificar problemas com a configuração do Sentry
-  debug: true,
+  // DEBUG para ajudar a identificar problemas - ativo apenas em desenvolvimento
+  debug: isDev,
+  
+  // Configura o comportamento de acordo com o ambiente
+  beforeSend(event) {
+    // Em produção, reduzimos a quantidade de logs no console
+    if (!isDev) {
+      // Remover console logs em produção para reduzir ruído
+      console.debug = () => {};
+      console.log = () => {};
+    }
+    return event;
+  },
 }); 
