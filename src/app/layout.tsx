@@ -19,16 +19,7 @@ export const metadata: Metadata = {
   title: "Brasil Rental Karts | Plataforma para Ligas de Kart Rental",
   description: "Ferramentas completas para gestão de ligas de kart rental, criação de campeonatos e perfis de pilotos.",
   icons: {
-    icon: [
-      {
-        url: "/favicon.ico",
-        sizes: "any",
-      },
-      {
-        url: "/brk_logo.svg",
-        type: "image/svg+xml",
-      },
-    ],
+    icon: "/favicon.ico",
     apple: "/brk_logo.svg",
   },
 };
