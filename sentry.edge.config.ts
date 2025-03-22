@@ -13,6 +13,9 @@ Sentry.init({
   // Define o ambiente atual
   environment: process.env.NODE_ENV,
 
-  // Desabilita o Sentry em ambiente de desenvolvimento
-  enabled: process.env.NODE_ENV === 'production',
+  // Habilita o Sentry em qualquer ambiente para testes
+  enabled: true,
+  
+  // Ativa o debug para identificar problemas
+  debug: true,
 }); 

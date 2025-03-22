@@ -17,9 +17,12 @@ Sentry.init({
   // Define o ambiente atual
   environment: process.env.NODE_ENV,
 
-  // Desabilita o Sentry em ambiente de desenvolvimento
-  enabled: process.env.NODE_ENV === 'production',
+  // Habilita o Sentry em qualquer ambiente para testes
+  enabled: true,
   
   // Define a versão do release, útil para identificar quais commits contêm o erro
   release: process.env.NEXT_PUBLIC_VERCEL_GIT_COMMIT_SHA || 'dev',
+  
+  // DEBUG para ajudar a identificar problemas com a configuração do Sentry
+  debug: true,
 }); 
