@@ -17,12 +17,6 @@ const nextConfig = {
   eslint: {
     ignoreDuringBuilds: true,
   },
-  // Configurações do Sentry integradas diretamente
-  sentry: {
-    hideSourceMaps: true, // Oculta os source maps em produção
-    disableServerWebpackPlugin: true, // Desabilita o plugin do Webpack para o servidor
-    disableClientWebpackPlugin: true, // Desabilita o plugin do Webpack para o cliente
-  },
   env: {
     // Garante que variáveis de ambiente críticas estejam disponíveis no cliente
     NEXT_PUBLIC_SENTRY_DSN: process.env.NEXT_PUBLIC_SENTRY_DSN,
@@ -43,6 +37,9 @@ const sentryWebpackPluginOptions = {
   // Desabilita o upload de source maps durante o build
   silent: true, // Silencia os logs do Sentry CLI
   disableSourceMapUpload: true, // Desabilita o upload de source maps
+  hideSourceMaps: true, // Oculta os source maps em produção
+  disableServerWebpackPlugin: true, // Desabilita o plugin do Webpack para o servidor
+  disableClientWebpackPlugin: true, // Desabilita o plugin do Webpack para o cliente
   sourcemaps: {
     assets: './**', // Caminho para os assets
     ignore: ['node_modules/**/*'],
