@@ -17,6 +17,12 @@ jest.mock('@vercel/analytics/react', () => ({
   Analytics: () => <div data-testid="analytics-mock">Analytics Mock</div>,
 }));
 
+// Mock para o componente Metrics
+jest.mock('./metrics', () => ({
+  __esModule: true,
+  default: () => <div data-testid="metrics-mock">Metrics Mock</div>,
+}));
+
 // Mock para next/font/google
 jest.mock('next/font/google', () => ({
   Geist: jest.fn().mockReturnValue({
@@ -47,6 +53,7 @@ const SimplifiedRootLayout = () => {
       <main data-testid="main-component">{layout.props.children[1].props.children[1].props.children}</main>
       <footer data-testid="footer-component">{layout.props.children[1].props.children[2]}</footer>
       <div data-testid="analytics-component">{layout.props.children[1].props.children[3]}</div>
+      <div data-testid="metrics-component">{layout.props.children[1].props.children[4]}</div>
     </div>
   );
 };
@@ -76,6 +83,8 @@ describe('RootLayout Component', () => {
     expect(screen.getByTestId('footer-component')).toBeInTheDocument();
     expect(screen.getByTestId('analytics-component')).toBeInTheDocument();
     expect(screen.getByTestId('analytics-mock')).toBeInTheDocument();
+    expect(screen.getByTestId('metrics-component')).toBeInTheDocument();
+    expect(screen.getByTestId('metrics-mock')).toBeInTheDocument();
   });
   
   it('uses correct font configurations', () => {
