@@ -6,7 +6,7 @@ Uma plataforma completa para gestão de ligas de kart rental no Brasil. Disponib
 
 ## Visão Geral
 
-O Brasil Rental Karts (BRK) é uma solução digital desenvolvida para atender as necessidades específicas do mercado de kartismo rental no Brasil. A plataforma permite que organizadores de ligas criem e gerenciem competições de forma profissional, enquanto pilotos podem manter seus perfis, acompanhar resultados e conectar-se com a comunidade.
+O Brasil Rental Karts (BRK) é uma solução digital desenvolvida para atender as necessidades específicas do mercado de kart rental no Brasil. A plataforma permite que organizadores de ligas criem e gerenciem competições de forma profissional, enquanto pilotos podem manter seus perfis, acompanhar resultados e conectar-se com a comunidade.
 
 ### Principais Funcionalidades
 
@@ -46,12 +46,13 @@ O Brasil Rental Karts foi desenvolvido utilizando tecnologias modernas para gara
 ### Pré-requisitos
 - Node.js 18 ou superior
 - npm, yarn, pnpm ou bun
+- Docker e Docker Compose (opcional, para execução local do SonarQube)
 
 ### Instalação
 
 ```bash
 # Clone o repositório
-git clone https://github.com/seu-usuario/brasil-rental-karts.git
+git clone https://github.com/wernerjr/brasil-rental-karts.git
 cd brasil-rental-karts
 
 # Instale as dependências
@@ -78,6 +79,38 @@ bun dev
 
 Acesse [http://localhost:3000](http://localhost:3000) no seu navegador para visualizar a aplicação.
 
+## Qualidade de Código e Testes
+
+O projeto utiliza ferramentas modernas para garantir a qualidade do código e manter os padrões de desenvolvimento:
+
+### Testes
+
+```bash
+# Executar todos os testes
+npm run test
+
+# Executar testes em modo watch
+npm run test:watch
+
+# Executar testes com relatório de cobertura
+npm run test:coverage
+```
+
+### SonarQube
+
+O projeto está configurado para utilizar o SonarQube para análise de qualidade de código. Para mais informações sobre como configurar e utilizar o SonarQube, consulte o arquivo [SONARQUBE.md](SONARQUBE.md).
+
+```bash
+# Iniciar o servidor SonarQube local (requer Docker)
+npm run sonar:start
+
+# Executar a análise do SonarQube
+npm run sonar
+
+# Desligar o servidor SonarQube local
+npm run sonar:stop
+```
+
 ## Estrutura do Projeto
 
 ```
@@ -97,7 +130,7 @@ brasil-rental-karts/
 O Brasil Rental Karts opera com um modelo de negócio baseado em assinaturas, oferecendo diferentes planos para organizadores de ligas e pilotos:
 
 ### Planos para Organizadores
-- **Básico**: Gerenciamento de uma liga, até 30 pilotos
+- **Gratuito**: Gerenciamento de uma liga, até 20 pilotos
 - **Profissional**: Gerenciamento de múltiplas ligas, até 100 pilotos, estatísticas avançadas
 - **Enterprise**: Solução personalizada para grandes ligas com necessidades específicas
 
@@ -105,25 +138,6 @@ O Brasil Rental Karts opera com um modelo de negócio baseado em assinaturas, of
 - **Gratuito**: Perfil básico e participação em ligas
 - **Premium**: Estatísticas avançadas, histórico completo e recursos exclusivos
 
-## Roadmap
-
-- [ ] Integração com cronometragem de kartódromos
-- [ ] Aplicativo móvel para acompanhamento em tempo real
-- [ ] Sistema de transmissão de corridas ao vivo
-- [ ] API pública para desenvolvedores
-- [ ] Internacionalização para expansão global
-
 ## Propriedade Intelectual
 
 Este projeto é privado e proprietário. Todo o código, design e conteúdo estão protegidos por direitos autorais e não podem ser copiados, modificados ou distribuídos sem autorização expressa. O acesso a este repositório é restrito apenas a colaboradores autorizados.
-
-## Contato
-
-- **E-mail**: contato@brasilrentalkarts.com.br
-- **WhatsApp**: (47) 99999-9999
-- **Localização**: Blumenau, SC
-
-Siga-nos nas redes sociais:
-- [Instagram](https://instagram.com)
-- [YouTube](https://youtube.com)
-- [X (Twitter)](https://x.com)
