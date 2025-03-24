@@ -24,11 +24,8 @@ export default function Home() {
               Gerenciamento completo de competições, cadastro de pilotos e acompanhamento de resultados para ligas de kart rental.
             </p>
             <div className="flex flex-col sm:flex-row gap-4">
-              <Button size="lg" asChild>
-                <Link href="/ligas">Criar Liga</Link>
-              </Button>
-              <Button size="lg" variant="outline" className="bg-white/15 border-white text-white hover:bg-white hover:text-primary font-semibold">
-                <Link href="/pilotos">Perfil de Piloto</Link>
+              <Button size="lg" variant="outline" className="bg-white/15 border-white text-white hover:bg-white hover:text-primary font-semibold" asChild>
+                <Link href="/login">Login</Link>
               </Button>
             </div>
           </div>
@@ -36,7 +33,7 @@ export default function Home() {
       </section>
 
       {/* Features Section */}
-      <section className="py-16 bg-muted/40">
+      <section className="py-16">
         <div className="container mx-auto px-4">
           <div className="text-center mb-12">
             <h2 className="text-3xl font-bold mb-4">Por que usar a Brasil Rental Karts?</h2>
@@ -63,53 +60,15 @@ export default function Home() {
         </div>
       </section>
 
-      {/* For Leagues and Pilots */}
-      <section className="py-16">
-        <div className="container mx-auto px-4">
-          <div className="text-center mb-12">
-            <h2 className="text-3xl font-bold mb-4">Para Ligas e Pilotos</h2>
-            <p className="text-muted-foreground max-w-2xl mx-auto">
-              Soluções completas para organizadores de competições e pilotos de kart rental.
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {solutions.map((solution, index) => (
-              <Card key={index} className="overflow-hidden">
-                <div className="h-48 relative">
-                  <div 
-                    className="absolute inset-0 bg-cover bg-center filter grayscale"
-                    style={{ backgroundImage: `url(${solution.image})` }}
-                  />
-                </div>
-                <CardHeader>
-                  <div className="flex items-center">
-                    {solution.icon}
-                    <CardTitle>{solution.name}</CardTitle>
-                  </div>
-                  <CardDescription>{solution.category}</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-sm text-muted-foreground">{solution.description}</p>
-                </CardContent>
-                <CardFooter>
-                  <Button variant="outline" className="w-full">Saiba Mais</Button>
-                </CardFooter>
-              </Card>
-            ))}
-          </div>
-        </div>
-      </section>
-
       {/* CTA Section */}
       <section className="py-16 bg-primary text-primary-foreground">
         <div className="container mx-auto px-4 text-center">
-          <h2 className="text-3xl font-bold mb-4">Pronto para transformar sua liga?</h2>
+          <h2 className="text-3xl font-bold mb-4">Pronto para começar?</h2>
           <p className="mb-8 max-w-xl mx-auto">
-            Crie uma conta e comece a gerenciar suas competições de kart com ferramentas profissionais.
+            Crie sua conta e comece a participar de competições ou crie sua própria liga.
           </p>
           <Button size="lg" variant="secondary" className="hover:bg-accent hover:text-white" asChild>
-            <Link href="/cadastro">Criar Conta</Link>
+            <Link href="/login">Login</Link>
           </Button>
         </div>
       </section>

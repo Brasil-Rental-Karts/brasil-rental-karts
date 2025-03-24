@@ -1,36 +1,33 @@
 const nextJest = require('next/jest');
 
 const createJestConfig = nextJest({
-  // Provide the path to your Next.js app to load next.config.js and .env files in your test environment
+  // O diretório onde o app Next.js está localizado
   dir: './',
 });
 
-// Add any custom config to be passed to Jest
-/** @type {import('jest').Config} */
+// Configuração personalizada do Jest
 const customJestConfig = {
-  // Add more setup options before each test is run
-  setupFilesAfterEnv: ['<rootDir>/jest.setup.js'],
-  // if using TypeScript with a baseUrl set to the root directory then you need the below for alias to work
-  moduleDirectories: ['node_modules', '<rootDir>/'],
-  testEnvironment: 'jest-environment-jsdom',
-  // Add path aliases
+  // Adiciona mais configurações de setup aqui, se necessário
+  setupFilesAfterEnv: ['<rootDir>/__tests__/setupTests.js'],
+  testEnvironment: 'jsdom',
   moduleNameMapper: {
+    // Manipula mapeamentos de módulos para imports usando @ (que apontam para o diretório src/)
     '^@/(.*)$': '<rootDir>/src/$1',
   },
-  // Enable coverage reports
-  collectCoverage: true,
-  coverageDirectory: 'coverage',
+  // Diretórios onde os testes estão localizados
+  testMatch: ['**/__tests__/**/*.test.(js|jsx|ts|tsx)'],
+  // Cobertura de código
   collectCoverageFrom: [
     'src/**/*.{js,jsx,ts,tsx}',
     '!src/**/*.d.ts',
-    '!src/**/_*.{js,jsx,ts,tsx}',
-    '!src/**/*.stories.{js,jsx,ts,tsx}',
-    '!src/**/index.{js,jsx,ts,tsx}',
-    '!**/node_modules/**',
-    '!**/.next/**',
+    '!src/app/api/**',
+    '!src/app/globals.css',
   ],
-  coverageReporters: ['lcov', 'text', 'text-summary'],
+  transform: {
+    // Usa babel-jest para processar arquivos JavaScript/TypeScript
+    '^.+\\.(js|jsx|ts|tsx)$': ['babel-jest', { presets: ['next/babel'] }],
+  },
 };
 
-// createJestConfig is exported this way to ensure that next/jest can load the Next.js config which is async
+// Exporta a configuração do Jest
 module.exports = createJestConfig(customJestConfig); 
