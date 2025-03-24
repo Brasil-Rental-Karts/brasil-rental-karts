@@ -7,7 +7,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Trophy, Medal, Calendar, History, Users, BarChart, Plus, ArrowLeft } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import Link from "next/link"
-import { use } from "react"
 import { Loader2 } from "lucide-react"
 
 interface League {
@@ -17,14 +16,36 @@ interface League {
   created_at: string
 }
 
-export default function LeagueDashboard({ params }: { params: Promise<{ id: string }> }) {
+interface LeagueDashboardProps {
+  params: Promise<{
+    id: string
+  }>
+}
+
+export default function LeagueDashboard({ params }: LeagueDashboardProps) {
   const router = useRouter()
   const [league, setLeague] = useState<League | null>(null)
   const [loading, setLoading] = useState(true)
   const supabase = createClientComponentClient()
-  const { id } = use(params)
+  const [id, setId] = useState<string>("")
 
   useEffect(() => {
+    const resolveParams = async () => {
+      try {
+        const resolvedParams = await params
+        setId(resolvedParams.id)
+      } catch (error) {
+        console.error("Erro ao resolver parâmetros:", error)
+        router.push("/login")
+      }
+    }
+    
+    resolveParams()
+  }, [params, router])
+
+  useEffect(() => {
+    if (!id) return
+
     const checkAuth = async () => {
       try {
         const { data: { session } } = await supabase.auth.getSession()

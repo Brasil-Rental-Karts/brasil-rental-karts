@@ -1,13 +1,15 @@
 import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs'
 import { cookies } from 'next/headers'
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 
 export async function GET(
-  request: Request,
-  { params }: { params: { id: string } }
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const supabase = createRouteHandlerClient({ cookies })
+    const resolvedParams = await params
+    const id = resolvedParams.id
 
     // Verify if the user is authenticated
     const { data: { session }, error: sessionError } = await supabase.auth.getSession()
@@ -23,7 +25,7 @@ export async function GET(
     const { data: league, error: leagueError } = await supabase
       .from('leagues')
       .select('*')
-      .eq('id', params.id)
+      .eq('id', id)
       .single()
 
     if (leagueError) {

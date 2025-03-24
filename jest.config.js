@@ -8,7 +8,7 @@ const createJestConfig = nextJest({
 // Configuração personalizada do Jest
 const customJestConfig = {
   // Adiciona mais configurações de setup aqui, se necessário
-  setupFilesAfterEnv: ['<rootDir>/__tests__/setupTests.js'],
+  setupFilesAfterEnv: ['<rootDir>/jest.setup.js'],
   testEnvironment: 'jsdom',
   moduleNameMapper: {
     // Manipula mapeamentos de módulos para imports usando @ (que apontam para o diretório src/)
@@ -24,8 +24,8 @@ const customJestConfig = {
     '!src/app/globals.css',
   ],
   transform: {
-    // Usa babel-jest para processar arquivos JavaScript/TypeScript
-    '^.+\\.(js|jsx|ts|tsx)$': ['babel-jest', { presets: ['next/babel'] }],
+    // Usa babel-jest com a configuração específica para testes
+    '^.+\\.(js|jsx|ts|tsx)$': ['babel-jest', { configFile: './babel.config.test.js' }],
   },
 };
 
