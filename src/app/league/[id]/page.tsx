@@ -8,11 +8,15 @@ import { Trophy, Medal, Calendar, History, Users, BarChart, Plus, ArrowLeft } fr
 import { Button } from "@/components/ui/button"
 import Link from "next/link"
 import { Loader2 } from "lucide-react"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { EditLeagueModal } from "@/components/edit-league-modal"
 
 interface League {
   id: string
   name: string
   description: string
+  logo_url: string | null
+  owner_id: string
   created_at: string
 }
 
@@ -26,6 +30,7 @@ export default function LeagueDashboard({ params }: LeagueDashboardProps) {
   const router = useRouter()
   const [league, setLeague] = useState<League | null>(null)
   const [loading, setLoading] = useState(true)
+  const [isOwner, setIsOwner] = useState(false)
   const supabase = createClientComponentClient()
   const [id, setId] = useState<string>("")
 
@@ -62,7 +67,10 @@ export default function LeagueDashboard({ params }: LeagueDashboardProps) {
           .single()
 
         if (error) throw error
+
         setLeague(leagueData)
+        // Verificar se o usuário logado é o dono da liga
+        setIsOwner(session.user.id === leagueData.owner_id)
       } catch (error) {
         console.error("Erro ao buscar liga:", error)
         router.push("/login")
@@ -73,6 +81,27 @@ export default function LeagueDashboard({ params }: LeagueDashboardProps) {
 
     checkAuth()
   }, [id, router, supabase])
+
+  const handleLeagueUpdated = async () => {
+    // Recarregar os dados da liga após atualização
+    if (!id) return
+    
+    try {
+      setLoading(true)
+      const { data: leagueData, error } = await supabase
+        .from("leagues")
+        .select("*")
+        .eq("id", id)
+        .single()
+
+      if (error) throw error
+      setLeague(leagueData)
+    } catch (error) {
+      console.error("Erro ao atualizar dados da liga:", error)
+    } finally {
+      setLoading(false)
+    }
+  }
 
   if (loading) {
     return (
@@ -95,8 +124,16 @@ export default function LeagueDashboard({ params }: LeagueDashboardProps) {
 
   return (
     <div className="min-h-screen flex flex-col bg-background">
-      {/* Hero Section */}
-      <div className="relative h-[300px] w-full">
+      {/* Botão Voltar no topo */}
+      <div className="container mx-auto px-4 py-4">
+        <Button variant="outline" onClick={() => router.push("/pilot")} className="gap-2">
+          <ArrowLeft className="h-4 w-4" />
+          Voltar
+        </Button>
+      </div>
+      
+      {/* Hero Section - Simplificado */}
+      <div className="w-full relative">
         <div 
           className="absolute inset-0 z-0 bg-cover bg-center" 
           style={{
@@ -104,15 +141,26 @@ export default function LeagueDashboard({ params }: LeagueDashboardProps) {
           }}
         />
         <div className="absolute inset-0 bg-gradient-to-r from-primary/90 to-secondary/90 z-10" />
-        <div className="absolute inset-0 flex items-center justify-center z-20">
-          <div className="text-center px-4">
-            <h1 className="text-4xl md:text-5xl font-bold text-white mb-4">
-              {league.name}
-            </h1>
-            <p className="text-lg text-white/90 max-w-2xl mx-auto">
-              {league.description}
-            </p>
-          </div>
+        
+        <div className="container mx-auto px-4 pt-6 pb-10 flex flex-col items-center relative z-20">
+          <Avatar className="h-28 w-28 border-4 border-white shadow-lg mb-4">
+            <AvatarImage src={league.logo_url || undefined} alt={league.name} />
+            <AvatarFallback className="text-4xl">
+              {league.name.charAt(0)}
+            </AvatarFallback>
+          </Avatar>
+          
+          <h1 className="text-3xl font-bold text-white mb-5">
+            {league.name}
+          </h1>
+          
+          {isOwner && (
+            <EditLeagueModal 
+              league={league} 
+              onSuccess={handleLeagueUpdated} 
+              isOwner={isOwner} 
+            />
+          )}
         </div>
       </div>
 
@@ -172,10 +220,6 @@ export default function LeagueDashboard({ params }: LeagueDashboardProps) {
                 Gerencie sua liga e acompanhe as competições
               </p>
             </div>
-            <Button variant="outline" onClick={() => router.push("/pilot")} className="gap-2">
-              <ArrowLeft className="h-4 w-4" />
-              Voltar
-            </Button>
           </div>
 
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">

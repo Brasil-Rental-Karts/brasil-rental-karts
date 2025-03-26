@@ -14,7 +14,7 @@ export async function POST(request: Request) {
       )
     }
 
-    const { name, description } = await request.json()
+    const { name, description, logo_url } = await request.json()
 
     if (!name || !description) {
       return NextResponse.json(
@@ -31,6 +31,7 @@ export async function POST(request: Request) {
           name,
           description,
           owner_id: session.user.id,
+          logo_url: logo_url || null,
         },
       ])
       .select()
@@ -44,7 +45,7 @@ export async function POST(request: Request) {
       )
     }
 
-    return NextResponse.json(league)
+    return NextResponse.json({ league })
   } catch (error) {
     console.error('Erro ao criar liga:', error)
     return NextResponse.json(

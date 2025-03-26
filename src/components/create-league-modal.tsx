@@ -8,6 +8,8 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Plus } from 'lucide-react'
+import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 
 interface CreateLeagueModalProps {
   onSuccess?: () => void
@@ -15,15 +17,28 @@ interface CreateLeagueModalProps {
 
 export function CreateLeagueModal({ onSuccess }: CreateLeagueModalProps) {
   const router = useRouter()
+  const supabase = createClientComponentClient()
   const [isOpen, setIsOpen] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState('')
+  const [logoFile, setLogoFile] = useState<File | null>(null)
+  const [logoPreview, setLogoPreview] = useState<string | null>(null)
   const [formData, setFormData] = useState({
     name: '',
     description: '',
-    email: '',
-    password: ''
   })
+
+  const handleLogoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (file) {
+      setLogoFile(file)
+      const reader = new FileReader()
+      reader.onloadend = () => {
+        setLogoPreview(reader.result as string)
+      }
+      reader.readAsDataURL(file)
+    }
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -31,21 +46,64 @@ export function CreateLeagueModal({ onSuccess }: CreateLeagueModalProps) {
     setError('')
 
     try {
+      // Primeiro, obter a sessão do usuário
+      const { data: { session } } = await supabase.auth.getSession()
+      
+      if (!session) {
+        throw new Error('Não autorizado')
+      }
+
+      let logoUrl = null
+
+      // Upload do logo se for fornecido
+      if (logoFile) {
+        console.log("Iniciando upload do logo...")
+        const fileExt = logoFile.name.split(".").pop()
+        const fileName = `${Date.now()}-${Math.random()}.${fileExt}`
+        const filePath = `${session.user.id}/${fileName}`
+
+        // Upload do logo para o Supabase Storage
+        const { error: uploadError } = await supabase.storage
+          .from("league-logos")
+          .upload(filePath, logoFile, {
+            cacheControl: '3600',
+            upsert: true
+          })
+
+        if (uploadError) {
+          console.error("Erro ao fazer upload do logo:", uploadError)
+          throw new Error('Erro ao fazer upload do logo')
+        }
+
+        console.log("Logo enviado com sucesso, obtendo URL pública...")
+        // Obtendo URL pública
+        const { data: { publicUrl } } = supabase.storage
+          .from("league-logos")
+          .getPublicUrl(filePath)
+
+        logoUrl = publicUrl
+        console.log("URL pública do logo obtida:", logoUrl)
+      }
+
+      // Criar a liga com ou sem logo
       const response = await fetch('/api/league/create', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(formData),
+        body: JSON.stringify({
+          ...formData,
+          logo_url: logoUrl
+        }),
       })
 
       const data = await response.json()
 
       if (!response.ok) {
-        throw new Error(data.error || 'Failed to create league')
+        throw new Error(data.error || 'Falha ao criar liga')
       }
 
-      // Close modal and redirect to the new league
+      // Fechar modal e redirecionar para a nova liga
       setIsOpen(false)
       onSuccess?.()
       router.push(`/league/${data.league.id}`)
@@ -77,6 +135,27 @@ export function CreateLeagueModal({ onSuccess }: CreateLeagueModalProps) {
           <DialogTitle>Criar Nova Liga</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="flex flex-col items-center space-y-4">
+            <Avatar className="h-24 w-24">
+              <AvatarImage src={logoPreview || undefined} alt="Logo da Liga" />
+              <AvatarFallback className="text-2xl">
+                {formData.name ? formData.name.charAt(0) : 'L'}
+              </AvatarFallback>
+            </Avatar>
+            <div className="flex flex-col items-center space-y-2">
+              <Label htmlFor="logo" className="cursor-pointer">
+                Adicionar logo
+              </Label>
+              <Input
+                id="logo"
+                type="file"
+                accept="image/*"
+                onChange={handleLogoChange}
+                className="hidden"
+              />
+            </div>
+          </div>
+
           <div className="space-y-2">
             <Label htmlFor="name">Nome da Liga</Label>
             <Input

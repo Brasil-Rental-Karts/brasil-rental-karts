@@ -98,52 +98,48 @@ export async function initializeSchema() {
       console.log("Tabela leagues já existe")
     } catch {
       console.log("Criando tabela leagues...")
-      const { error: leaguesError } = await supabaseAdmin.rpc('exec_sql', {
-        sql: `
-          -- Create leagues table
-          CREATE TABLE IF NOT EXISTS leagues (
-              id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
-              name TEXT NOT NULL,
-              description TEXT,
-              owner_id UUID NOT NULL REFERENCES auth.users(id),
-              created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
-              updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
-              UNIQUE(name)
-          );
+      console.log("A tabela leagues não existe. Execute o seguinte SQL no painel do Supabase para criá-la:")
+      console.log(`
+        -- Create leagues table
+        CREATE TABLE IF NOT EXISTS leagues (
+            id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+            name TEXT NOT NULL,
+            description TEXT,
+            owner_id UUID NOT NULL REFERENCES auth.users(id),
+            logo_url TEXT,
+            created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
+            updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
+            UNIQUE(name)
+        );
 
-          -- Enable RLS on leagues
-          ALTER TABLE leagues ENABLE ROW LEVEL SECURITY;
+        -- Enable RLS on leagues
+        ALTER TABLE leagues ENABLE ROW LEVEL SECURITY;
 
-          -- Create policies for leagues
-          CREATE POLICY "Anyone can view leagues"
-              ON leagues FOR SELECT
-              USING (true);
+        -- Create policies for leagues
+        CREATE POLICY "Anyone can view leagues"
+            ON leagues FOR SELECT
+            USING (true);
 
-          CREATE POLICY "Authenticated users can create leagues"
-              ON leagues FOR INSERT
-              WITH CHECK (auth.role() = 'authenticated');
+        CREATE POLICY "Authenticated users can create leagues"
+            ON leagues FOR INSERT
+            WITH CHECK (auth.role() = 'authenticated');
 
-          CREATE POLICY "League owners can update their leagues"
-              ON leagues FOR UPDATE
-              USING (auth.uid() = owner_id);
+        CREATE POLICY "League owners can update their leagues"
+            ON leagues FOR UPDATE
+            USING (auth.uid() = owner_id);
 
-          CREATE POLICY "League owners can delete their leagues"
-              ON leagues FOR DELETE
-              USING (auth.uid() = owner_id);
+        CREATE POLICY "League owners can delete their leagues"
+            ON leagues FOR DELETE
+            USING (auth.uid() = owner_id);
 
-          -- Create trigger for updating updated_at
-          CREATE TRIGGER update_leagues_updated_at
-              BEFORE UPDATE ON leagues
-              FOR EACH ROW
-              EXECUTE FUNCTION update_updated_at_column();
-        `
-      })
+        -- Create trigger for updating updated_at
+        CREATE TRIGGER update_leagues_updated_at
+            BEFORE UPDATE ON leagues
+            FOR EACH ROW
+            EXECUTE FUNCTION update_updated_at_column();
+      `)
 
-      if (leaguesError) {
-        console.error('Erro ao criar tabela leagues:', leaguesError)
-      } else {
-        console.log("Tabela leagues criada com sucesso!")
-      }
+      console.log("Você pode executar este SQL no painel do Supabase ou criar manualmente a tabela. Em seguida, reinicie a aplicação.")
     }
 
     // Check if pilot-avatars bucket exists
@@ -206,6 +202,63 @@ export async function initializeSchema() {
         }
       } else {
         console.log("Bucket pilot-avatars já existe")
+      }
+    } catch (error) {
+      console.error('Erro ao verificar/criar bucket:', error)
+    }
+
+    // Check if league-logos bucket exists
+    try {
+      const { data: buckets } = await supabaseAdmin.storage.listBuckets()
+      const leageLogosBucket = buckets?.find(bucket => bucket.name === 'league-logos')
+      
+      if (!leageLogosBucket) {
+        console.log("Criando bucket league-logos...")
+        const { error: bucketError } = await supabaseAdmin.storage.createBucket('league-logos', {
+          public: true,
+          allowedMimeTypes: ['image/jpeg', 'image/png', 'image/gif'],
+          fileSizeLimit: 5242880 // 5MB
+        })
+
+        if (bucketError) {
+          console.error('Erro ao criar bucket league-logos:', bucketError)
+        } else {
+          console.log("Bucket league-logos criado com sucesso!")
+
+          console.log("Para criar as políticas do bucket league-logos, execute as seguintes comandos SQL no painel do Supabase:")
+          console.log(`
+            -- Set up storage policies for league-logos bucket
+            CREATE POLICY "League logos are publicly accessible"
+              ON storage.objects FOR SELECT
+              USING (bucket_id = 'league-logos');
+
+            CREATE POLICY "Users can upload league logos to their own folder"
+              ON storage.objects FOR INSERT
+              WITH CHECK (
+                bucket_id = 'league-logos' 
+                AND auth.role() = 'authenticated'
+                AND (storage.foldername(name))[1] = auth.uid()::text
+              );
+
+            CREATE POLICY "Users can update league logos in their own folder"
+              ON storage.objects FOR UPDATE
+              USING (
+                bucket_id = 'league-logos'
+                AND auth.role() = 'authenticated'
+                AND (storage.foldername(name))[1] = auth.uid()::text
+              );
+
+            CREATE POLICY "Users can delete league logos from their own folder"
+              ON storage.objects FOR DELETE
+              USING (
+                bucket_id = 'league-logos'
+                AND auth.role() = 'authenticated'
+                AND (storage.foldername(name))[1] = auth.uid()::text
+              );
+          `);
+        }
+      } else {
+        console.log("Bucket league-logos já existe")
       }
     } catch (error) {
       console.error('Erro ao verificar/criar bucket:', error)
