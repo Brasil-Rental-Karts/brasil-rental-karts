@@ -9,11 +9,12 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
+  DialogDescription,
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
-import { Loader2, Pencil } from "lucide-react"
+import { Loader2, Pencil, Camera, User, Phone, Mail, FileText } from "lucide-react"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { toast } from "sonner"
 import { IMaskInput } from "react-imask"
@@ -172,49 +173,80 @@ export function EditPilotModal({ pilot, onSuccess }: EditPilotModalProps) {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button variant="outline" className="gap-2">
-          <Pencil className="h-4 w-4" />
-          Editar Perfil
+        <Button variant="ghost" size="sm" className="gap-1.5 text-muted-foreground hover:text-foreground">
+          <Pencil className="h-3.5 w-3.5" />
+          <span className="sm:inline hidden">Editar</span>
         </Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-[425px]">
-        <DialogHeader>
+      <DialogContent className="sm:max-w-[425px] p-0 overflow-hidden">
+        <DialogHeader className="px-6 pt-6 pb-2">
           <DialogTitle>Editar Perfil</DialogTitle>
+          <DialogDescription className="text-xs text-muted-foreground">
+            Atualize suas informações pessoais
+          </DialogDescription>
         </DialogHeader>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="flex flex-col items-center space-y-4">
-            <Avatar className="h-24 w-24">
-              <AvatarImage src={avatarPreview || undefined} alt={pilot.name} />
-              <AvatarFallback className="text-2xl">
-                {pilot.name.charAt(0)}
-              </AvatarFallback>
-            </Avatar>
-            <div className="flex flex-col items-center space-y-2">
-              <Label htmlFor="avatar" className="cursor-pointer">
-                Alterar foto
-              </Label>
-              <Input
-                id="avatar"
-                type="file"
-                accept="image/*"
-                onChange={handleAvatarChange}
-                className="hidden"
-              />
+        <form onSubmit={handleSubmit} className="space-y-5">
+          <div className="relative bg-gradient-to-r from-primary/5 to-primary/10 py-8">
+            <div className="flex justify-center">
+              <div className="relative group">
+                <Avatar className="h-24 w-24 border-2 border-background shadow-md">
+                  <AvatarImage src={avatarPreview || undefined} alt={pilot.name} />
+                  <AvatarFallback className="text-2xl bg-primary/5">
+                    {pilot.name.charAt(0)}
+                  </AvatarFallback>
+                </Avatar>
+                <div className="absolute inset-0 bg-black/30 rounded-full opacity-0 group-hover:opacity-100 flex items-center justify-center transition-all duration-200">
+                  <Label htmlFor="avatar" className="cursor-pointer w-full h-full flex items-center justify-center">
+                    <Camera className="h-6 w-6 text-white" />
+                    <span className="sr-only">Alterar foto</span>
+                  </Label>
+                  <Input
+                    id="avatar"
+                    type="file"
+                    accept="image/*"
+                    onChange={handleAvatarChange}
+                    className="hidden"
+                  />
+                </div>
+              </div>
             </div>
           </div>
 
-          <div className="grid gap-4 py-4">
-            <div className="grid gap-2">
-              <Label htmlFor="name">Nome completo</Label>
+          <div className="px-6 space-y-4">
+            <div className="space-y-1.5">
+              <Label htmlFor="name" className="text-xs font-medium flex items-center gap-1.5">
+                <User className="h-3.5 w-3.5 text-muted-foreground/70" />
+                Nome completo
+              </Label>
               <Input
                 id="name"
                 name="name"
                 defaultValue={pilot.name}
+                className="h-9"
                 required
               />
             </div>
-            <div className="grid gap-2">
-              <Label htmlFor="phone">Telefone</Label>
+            
+            <div className="space-y-1.5">
+              <Label htmlFor="email" className="text-xs font-medium flex items-center gap-1.5">
+                <Mail className="h-3.5 w-3.5 text-muted-foreground/70" />
+                Email
+              </Label>
+              <Input
+                id="email"
+                type="email"
+                value={pilot.email}
+                className="h-9 bg-muted/40"
+                disabled
+              />
+              <p className="text-[10px] text-muted-foreground">Este email não pode ser alterado</p>
+            </div>
+            
+            <div className="space-y-1.5">
+              <Label htmlFor="phone" className="text-xs font-medium flex items-center gap-1.5">
+                <Phone className="h-3.5 w-3.5 text-muted-foreground/70" />
+                Telefone
+              </Label>
               <IMaskInput
                 id="phone"
                 name="phone"
@@ -222,35 +254,44 @@ export function EditPilotModal({ pilot, onSuccess }: EditPilotModalProps) {
                 placeholder="(99) 99999-9999"
                 mask="(00) 00000-0000"
                 defaultValue={pilot.phone || ''}
-                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="bio" className="text-xs font-medium flex items-center gap-1.5">
+                <FileText className="h-3.5 w-3.5 text-muted-foreground/70" />
+                Sobre você
+              </Label>
+              <Textarea
+                id="bio"
+                name="bio"
+                defaultValue={pilot.bio}
+                placeholder="Conte um pouco sobre você, sua experiência no kart..."
+                className="resize-none text-sm min-h-[80px]"
+                rows={3}
               />
             </div>
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="email">Email</Label>
-            <Input
-              id="email"
-              type="email"
-              value={pilot.email}
-              disabled
-            />
+          <div className="px-6 pb-6 pt-2 flex justify-end gap-2">
+            <Button 
+              type="button" 
+              variant="ghost" 
+              size="sm"
+              onClick={() => setOpen(false)}
+              disabled={loading}
+            >
+              Cancelar
+            </Button>
+            <Button type="submit" size="sm" disabled={loading} className="min-w-[80px]">
+              {loading ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : (
+                "Salvar"
+              )}
+            </Button>
           </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="bio">Biografia</Label>
-            <Textarea
-              id="bio"
-              name="bio"
-              defaultValue={pilot.bio}
-              rows={4}
-            />
-          </div>
-
-          <Button type="submit" className="w-full" disabled={loading}>
-            {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            Salvar Alterações
-          </Button>
         </form>
       </DialogContent>
     </Dialog>
