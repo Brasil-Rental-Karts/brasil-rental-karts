@@ -4,12 +4,13 @@ import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Trophy, Medal, Calendar, History, Users, BarChart, Plus, ArrowLeft } from "lucide-react"
+import { Trophy, Medal, Calendar, History, Users, BarChart, Plus, ArrowLeft, Tag } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import Link from "next/link"
 import { Loader2 } from "lucide-react"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { EditLeagueModal } from "@/components/edit-league-modal"
+import { CreateCategoryModal } from "@/components/create-category-modal"
 
 interface League {
   id: string
@@ -33,6 +34,7 @@ export default function LeagueDashboard({ params }: LeagueDashboardProps) {
   const [isOwner, setIsOwner] = useState(false)
   const supabase = createClientComponentClient()
   const [id, setId] = useState<string>("")
+  const [categories, setCategories] = useState<any[]>([])
 
   useEffect(() => {
     const resolveParams = async () => {
@@ -71,6 +73,9 @@ export default function LeagueDashboard({ params }: LeagueDashboardProps) {
         setLeague(leagueData)
         // Verificar se o usuário logado é o dono da liga
         setIsOwner(session.user.id === leagueData.owner_id)
+        
+        // Fetch categories after authenticating
+        fetchCategories()
       } catch (error) {
         console.error("Erro ao buscar liga:", error)
         router.push("/login")
@@ -81,6 +86,24 @@ export default function LeagueDashboard({ params }: LeagueDashboardProps) {
 
     checkAuth()
   }, [id, router, supabase])
+
+  const fetchCategories = async () => {
+    if (!id) return
+
+    try {
+      const { data, error } = await supabase
+        .from("categories")
+        .select("*")
+        .eq("league_id", id)
+        .order("created_at", { ascending: false })
+
+      if (error) throw error
+      
+      setCategories(data || [])
+    } catch (error) {
+      console.error("Erro ao buscar categorias:", error)
+    }
+  }
 
   const handleLeagueUpdated = async () => {
     // Recarregar os dados da liga após atualização
@@ -101,6 +124,10 @@ export default function LeagueDashboard({ params }: LeagueDashboardProps) {
     } finally {
       setLoading(false)
     }
+  }
+
+  const handleCategoryCreated = () => {
+    fetchCategories()
   }
 
   if (loading) {
@@ -170,6 +197,19 @@ export default function LeagueDashboard({ params }: LeagueDashboardProps) {
           <div className="grid gap-6 md:grid-cols-3">
             <Card className="border-2 shadow-lg hover:shadow-xl transition-shadow">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-base font-medium">Categorias</CardTitle>
+                <Tag className="h-5 w-5 text-primary" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-3xl font-bold text-primary">{categories.length}</div>
+                <p className="text-sm text-muted-foreground mt-2">
+                  Categorias cadastradas
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card className="border-2 shadow-lg hover:shadow-xl transition-shadow">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-base font-medium">Campeonatos Ativos</CardTitle>
                 <Trophy className="h-5 w-5 text-primary" />
               </CardHeader>
@@ -220,25 +260,28 @@ export default function LeagueDashboard({ params }: LeagueDashboardProps) {
                 Gerencie sua liga e acompanhe as competições
               </p>
             </div>
+            {isOwner && (
+              <CreateCategoryModal leagueId={id} onSuccess={handleCategoryCreated} />
+            )}
           </div>
 
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
             <Card className="border-2 shadow-lg hover:shadow-xl transition-shadow">
               <CardHeader>
                 <div className="flex items-center gap-2">
-                  <Trophy className="h-5 w-5 text-primary" />
-                  <CardTitle className="text-xl">Campeonatos</CardTitle>
+                  <Tag className="h-5 w-5 text-primary" />
+                  <CardTitle className="text-xl">Categorias</CardTitle>
                 </div>
               </CardHeader>
               <CardContent>
                 <p className="text-muted-foreground mb-6">
-                  Crie e gerencie campeonatos para sua liga
+                  Crie e gerencie categorias para sua liga
                 </p>
                 <Button
                   className="w-full h-11 text-base"
-                  onClick={() => router.push(`/league/${id}/championships`)}
+                  onClick={() => router.push(`/league/${id}/categories`)}
                 >
-                  Gerenciar Campeonatos
+                  Gerenciar Categorias
                 </Button>
               </CardContent>
             </Card>
