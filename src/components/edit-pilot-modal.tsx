@@ -17,6 +17,7 @@ import { Loader2, Pencil } from "lucide-react"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { toast } from "sonner"
 import { IMaskInput } from "react-imask"
+import logger from "@/lib/logger"
 
 interface PilotProfile {
   id: string
@@ -64,7 +65,6 @@ export function EditPilotModal({ pilot, onSuccess }: EditPilotModalProps) {
       let avatarUrl = pilot.avatar_url
 
       if (avatarFile) {
-        console.log("Iniciando upload do avatar...")
         // Upload avatar to Supabase Storage
         const fileExt = avatarFile.name.split(".").pop()
         const fileName = `${pilot.id}-${Math.random()}.${fileExt}`
@@ -79,7 +79,10 @@ export function EditPilotModal({ pilot, onSuccess }: EditPilotModalProps) {
                 .from('pilot-avatars')
                 .remove([`${pilot.id}/${oldPath}`])
             } catch (error) {
-              console.error("Erro ao remover avatar antigo:", error)
+              logger.warning('Avatar', `Falha ao remover avatar antigo`, {
+                erro: error instanceof Error ? error.message : String(error),
+                pilotoId: pilot.id
+              });
               // Continue even if we fail to remove the old avatar
             }
           }
@@ -94,22 +97,22 @@ export function EditPilotModal({ pilot, onSuccess }: EditPilotModalProps) {
           })
 
         if (uploadError) {
-          console.error("Erro ao fazer upload do avatar:", uploadError)
+          logger.error('Avatar', `Upload falhou`, { 
+            erro: uploadError.message,
+            pilotoId: pilot.id
+          });
           toast.error("Erro ao fazer upload da foto. Tente novamente.")
           return
         }
 
-        console.log("Avatar enviado com sucesso, obtendo URL pública...")
         // Get public URL
         const { data: { publicUrl } } = supabase.storage
           .from("pilot-avatars")
           .getPublicUrl(filePath)
 
         avatarUrl = publicUrl
-        console.log("URL pública do avatar obtida:", avatarUrl)
       }
 
-      console.log("Atualizando perfil do piloto...")
       // First, try to update the pilot profile
       const { error: updateError } = await supabase
         .from("pilot_profiles")
@@ -126,12 +129,15 @@ export function EditPilotModal({ pilot, onSuccess }: EditPilotModalProps) {
         })
 
       if (updateError) {
-        console.error("Erro ao atualizar perfil do piloto:", updateError)
+        logger.error('Perfil', `Atualização falhou`, {
+          pilotoId: pilot.id,
+          erro: updateError.message,
+          detalhe: updateError.details
+        });
         toast.error("Erro ao atualizar perfil. Tente novamente.")
         return
       }
 
-      console.log("Atualizando metadados do usuário...")
       // Then, update the user metadata
       const { error: authError } = await supabase.auth.updateUser({
         data: { 
@@ -141,7 +147,10 @@ export function EditPilotModal({ pilot, onSuccess }: EditPilotModalProps) {
       })
 
       if (authError) {
-        console.error("Erro ao atualizar metadados do usuário:", authError)
+        logger.error('Auth', `Falha ao atualizar metadados do usuário`, {
+          pilotoId: pilot.id,
+          erro: authError.message
+        });
         toast.error("Erro ao atualizar perfil. Tente novamente.")
         return
       }
@@ -150,7 +159,10 @@ export function EditPilotModal({ pilot, onSuccess }: EditPilotModalProps) {
       setOpen(false)
       onSuccess()
     } catch (error) {
-      console.error("Erro ao atualizar perfil:", error)
+      logger.error('Perfil', `Erro não tratado na atualização`, {
+        erro: error instanceof Error ? error.message : String(error),
+        pilotoId: pilot.id
+      });
       toast.error("Erro ao atualizar perfil. Tente novamente.")
     } finally {
       setLoading(false)

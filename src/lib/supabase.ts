@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js'
+import logger from '@/lib/logger'
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
@@ -22,7 +23,6 @@ export async function initializeSchema() {
       const pilotAvatarsBucket = buckets?.find(bucket => bucket.name === 'pilot-avatars')
       
       if (!pilotAvatarsBucket) {
-        console.log("Criando bucket pilot-avatars...")
         const { error: bucketError } = await supabaseAdmin.storage.createBucket('pilot-avatars', {
           public: true,
           allowedMimeTypes: ['image/jpeg', 'image/png', 'image/gif'],
@@ -30,15 +30,12 @@ export async function initializeSchema() {
         })
 
         if (bucketError) {
-          console.error('Erro ao criar bucket pilot-avatars:', bucketError)
-        } else {
-          console.log("Bucket pilot-avatars criado com sucesso!")
+          logger.error('Storage', `Falha ao criar bucket pilot-avatars: ${bucketError.message}`)
         }
-      } else {
-        console.log("Bucket pilot-avatars já existe")
       }
     } catch (error) {
-      console.error('Erro ao verificar/criar bucket:', error)
+      logger.error('Storage', `Falha ao verificar/criar bucket pilot-avatars`, 
+        { erro: error instanceof Error ? error.message : String(error) })
     }
 
     // Check if league-logos bucket exists
@@ -47,7 +44,6 @@ export async function initializeSchema() {
       const leageLogosBucket = buckets?.find(bucket => bucket.name === 'league-logos')
       
       if (!leageLogosBucket) {
-        console.log("Criando bucket league-logos...")
         const { error: bucketError } = await supabaseAdmin.storage.createBucket('league-logos', {
           public: true,
           allowedMimeTypes: ['image/jpeg', 'image/png', 'image/gif'],
@@ -55,18 +51,16 @@ export async function initializeSchema() {
         })
 
         if (bucketError) {
-          console.error('Erro ao criar bucket league-logos:', bucketError)
-        } else {
-          console.log("Bucket league-logos criado com sucesso!")
+          logger.error('Storage', `Falha ao criar bucket league-logos: ${bucketError.message}`)
         }
-      } else {
-        console.log("Bucket league-logos já existe")
       }
     } catch (error) {
-      console.error('Erro ao verificar/criar bucket:', error)
+      logger.error('Storage', `Falha ao verificar/criar bucket league-logos`, 
+        { erro: error instanceof Error ? error.message : String(error) })
     }
 
   } catch (error) {
-    console.error('Erro ao inicializar schema:', error)
+    logger.error('Database', `Falha ao inicializar schema`, 
+      { erro: error instanceof Error ? error.message : String(error) })
   }
 } 

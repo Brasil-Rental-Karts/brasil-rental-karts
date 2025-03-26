@@ -9,6 +9,7 @@ import { CreateLeagueModal } from "@/components/create-league-modal"
 import { EditPilotModal } from "@/components/edit-pilot-modal"
 import { Loader2, User, Trophy, Calendar, History, Plus } from "lucide-react"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import logger from "@/lib/logger"
 
 interface League {
   id: string
@@ -38,7 +39,7 @@ export default function PilotPage() {
       const { data: { session }, error: sessionError } = await supabase.auth.getSession()
       
       if (sessionError) {
-        console.error("Erro ao obter sessão:", sessionError)
+        logger.error('Auth', `Sessão inválida`, { mensagem: sessionError.message });
         router.push("/login")
         return
       }
@@ -48,7 +49,6 @@ export default function PilotPage() {
         return
       }
 
-      console.log("Buscando perfil do piloto para o usuário:", session.user.id)
       // Fetch pilot profile
       const { data: pilotData, error: pilotError } = await supabase
         .from("pilot_profiles")
@@ -57,12 +57,13 @@ export default function PilotPage() {
         .single()
 
       if (pilotError) {
-        console.error("Erro detalhado ao buscar perfil do piloto:", {
-          code: pilotError.code,
-          message: pilotError.message,
-          details: pilotError.details,
-          hint: pilotError.hint
-        })
+        logger.error('Perfil', `Falha ao buscar perfil piloto`, {
+          usuarioId: session.user.id,
+          codigo: pilotError.code,
+          mensagem: pilotError.message,
+          detalhes: pilotError.details,
+          dica: pilotError.hint
+        });
         
         // If the error is not "no rows returned", throw it
         if (pilotError.code !== "PGRST116") {
@@ -72,7 +73,6 @@ export default function PilotPage() {
 
       // If no profile exists, create one with default values
       if (!pilotData) {
-        console.log("Criando novo perfil para o piloto:", session.user.id)
         const { data: newPilot, error: createError } = await supabase
           .from("pilot_profiles")
           .insert({
@@ -89,12 +89,13 @@ export default function PilotPage() {
           .single()
 
         if (createError) {
-          console.error("Erro detalhado ao criar perfil do piloto:", {
-            code: createError.code,
-            message: createError.message,
-            details: createError.details,
-            hint: createError.hint
-          })
+          logger.error('Perfil', `Falha ao criar perfil piloto`, {
+            usuarioId: session.user.id,
+            codigo: createError.code,
+            mensagem: createError.message,
+            detalhes: createError.details,
+            dica: createError.hint
+          });
           throw createError
         }
         setPilot(newPilot)
@@ -102,7 +103,6 @@ export default function PilotPage() {
         setPilot(pilotData)
       }
 
-      console.log("Buscando ligas do piloto...")
       // Fetch leagues
       const { data: leaguesData, error: leaguesError } = await supabase
         .from("leagues")
@@ -111,20 +111,21 @@ export default function PilotPage() {
         .order("created_at", { ascending: false })
 
       if (leaguesError) {
-        console.error("Erro detalhado ao buscar ligas:", {
-          code: leaguesError.code,
-          message: leaguesError.message,
-          details: leaguesError.details,
-          hint: leaguesError.hint
-        })
+        logger.error('Ligas', `Falha ao buscar ligas do piloto`, {
+          usuarioId: session.user.id,
+          codigo: leaguesError.code,
+          mensagem: leaguesError.message,
+          detalhes: leaguesError.details,
+          dica: leaguesError.hint
+        });
         throw leaguesError
       }
       setLeagues(leaguesData || [])
     } catch (error) {
-      console.error("Erro detalhado ao buscar dados:", {
-        message: error instanceof Error ? error.message : "Erro desconhecido",
-        error: error
-      })
+      logger.error('Piloto', `Erro ao buscar dados do piloto`, {
+        mensagem: error instanceof Error ? error.message : "Erro desconhecido",
+        stack: error instanceof Error ? error.stack : null,
+      });
       router.push("/login")
     } finally {
       setLoading(false)

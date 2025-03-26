@@ -3,6 +3,7 @@
 // https://docs.sentry.io/platforms/javascript/guides/nextjs/
 
 import * as Sentry from "@sentry/nextjs";
+import logger from "@/lib/logger";
 
 // Verificar ambiente
 const isDev = process.env.NODE_ENV === 'development';
@@ -26,7 +27,10 @@ Sentry.init({
   beforeSend(event) {
     // Registra logs apenas em ambiente de desenvolvimento
     if (isDev) {
-      console.log(`Sentry capturou um evento no servidor: ${event.event_id}`);
+      logger.info('Sentry', `Evento capturado`, { 
+        eventId: event.event_id,
+        tipo: event.level || 'info'
+      });
     }
     return event;
   },

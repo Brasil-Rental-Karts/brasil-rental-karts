@@ -6,9 +6,6 @@ import * as Sentry from "@sentry/nextjs";
 
 // Log para debug - verificar se a variável de ambiente está disponível
 const isDev = process.env.NODE_ENV === 'development';
-if (isDev) {
-  console.log("DSN disponível no cliente:", !!process.env.NEXT_PUBLIC_SENTRY_DSN);
-}
 
 Sentry.init({
   dsn: process.env.NEXT_PUBLIC_SENTRY_DSN,

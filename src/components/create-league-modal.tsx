@@ -10,6 +10,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { Plus } from 'lucide-react'
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
+import logger from '@/lib/logger'
 
 interface CreateLeagueModalProps {
   onSuccess?: () => void
@@ -57,7 +58,6 @@ export function CreateLeagueModal({ onSuccess }: CreateLeagueModalProps) {
 
       // Upload do logo se for fornecido
       if (logoFile) {
-        console.log("Iniciando upload do logo...")
         const fileExt = logoFile.name.split(".").pop()
         const fileName = `${Date.now()}-${Math.random()}.${fileExt}`
         const filePath = `${session.user.id}/${fileName}`
@@ -71,18 +71,20 @@ export function CreateLeagueModal({ onSuccess }: CreateLeagueModalProps) {
           })
 
         if (uploadError) {
-          console.error("Erro ao fazer upload do logo:", uploadError)
+          logger.error('Liga', `Falha no upload do logo (criação)`, {
+            erro: uploadError.message,
+            userId: session.user.id,
+            fileName
+          });
           throw new Error('Erro ao fazer upload do logo')
         }
 
-        console.log("Logo enviado com sucesso, obtendo URL pública...")
         // Obtendo URL pública
         const { data: { publicUrl } } = supabase.storage
           .from("league-logos")
           .getPublicUrl(filePath)
 
         logoUrl = publicUrl
-        console.log("URL pública do logo obtida:", logoUrl)
       }
 
       // Criar a liga com ou sem logo

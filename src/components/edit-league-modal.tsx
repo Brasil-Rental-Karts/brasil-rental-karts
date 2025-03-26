@@ -16,6 +16,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Loader2, Pencil } from "lucide-react"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { toast } from "sonner"
+import logger from "@/lib/logger"
 
 interface League {
   id: string
@@ -63,7 +64,6 @@ export function EditLeagueModal({ league, onSuccess, isOwner }: EditLeagueModalP
 
       // Upload do logo se for fornecido
       if (logoFile) {
-        console.log("Iniciando upload do logo...")
         // Obter a sessão para garantir que temos o ID do usuário
         const { data: { session } } = await supabase.auth.getSession()
         
@@ -85,7 +85,11 @@ export function EditLeagueModal({ league, onSuccess, isOwner }: EditLeagueModalP
                 .from('league-logos')
                 .remove([`${session.user.id}/${oldPath}`])
             } catch (error) {
-              console.error("Erro ao remover logo antigo:", error)
+              logger.warning('Liga', `Falha ao remover logo antigo`, {
+                erro: error instanceof Error ? error.message : String(error),
+                ligaId: league.id,
+                usuarioId: session.user.id
+              });
               // Continuar mesmo se falhar ao remover o logo antigo
             }
           }
@@ -100,22 +104,23 @@ export function EditLeagueModal({ league, onSuccess, isOwner }: EditLeagueModalP
           })
 
         if (uploadError) {
-          console.error("Erro ao fazer upload do logo:", uploadError)
+          logger.error('Liga', `Falha no upload do logo`, {
+            erro: uploadError.message,
+            ligaId: league.id,
+            userId: session.user.id
+          });
           toast.error("Erro ao fazer upload do logo. Tente novamente.")
           return
         }
 
-        console.log("Logo enviado com sucesso, obtendo URL pública...")
         // Obter URL pública
         const { data: { publicUrl } } = supabase.storage
           .from("league-logos")
           .getPublicUrl(filePath)
 
         logoUrl = publicUrl
-        console.log("URL pública do logo obtida:", logoUrl)
       }
 
-      console.log("Atualizando dados da liga...")
       // Atualizar a liga
       const { error: updateError } = await supabase
         .from("leagues")
@@ -128,7 +133,11 @@ export function EditLeagueModal({ league, onSuccess, isOwner }: EditLeagueModalP
         .eq('id', league.id)
 
       if (updateError) {
-        console.error("Erro ao atualizar liga:", updateError)
+        logger.error('Liga', `Falha na atualização`, {
+          erro: updateError.message,
+          ligaId: league.id,
+          detalhe: updateError.details
+        });
         toast.error("Erro ao atualizar liga. Tente novamente.")
         return
       }
@@ -137,7 +146,10 @@ export function EditLeagueModal({ league, onSuccess, isOwner }: EditLeagueModalP
       setOpen(false)
       onSuccess()
     } catch (error) {
-      console.error("Erro ao atualizar liga:", error)
+      logger.error('Liga', `Erro não tratado na atualização`, {
+        erro: error instanceof Error ? error.message : String(error),
+        ligaId: league.id
+      });
       toast.error("Erro ao atualizar liga. Tente novamente.")
     } finally {
       setLoading(false)
