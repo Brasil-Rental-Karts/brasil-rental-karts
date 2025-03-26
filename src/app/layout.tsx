@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { Analytics } from "@vercel/analytics/react";
 import "./globals.css";
+import { initializeSchema } from "@/lib/supabase"
 
 import { Header } from "@/components/header";
 import { Footer } from "@/components/layout/footer";
@@ -15,6 +16,9 @@ const geistMono = Geist_Mono({
   variable: "--font-geist-mono",
   subsets: ["latin"],
 });
+
+// Initialize schema when the app starts
+initializeSchema().catch(console.error)
 
 export const metadata: Metadata = {
   title: "Brasil Rental Karts | Plataforma para Ligas de Kart Rental",
