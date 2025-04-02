@@ -191,7 +191,7 @@ export default function RaceDetail({ params }: RaceDetailProps) {
           category:category_id (id, name)
         `)
         .eq("race_id", raceId)
-        .order("position", { ascending: true, nullsLast: true })
+        .order("position", { ascending: true, nullsFirst: false })
 
       if (error) throw error
       
@@ -410,13 +410,19 @@ export default function RaceDetail({ params }: RaceDetailProps) {
                     <TableCell>
                       <div className="flex items-center gap-1">
                         {result.fastest_lap && (
-                          <Clock className="h-4 w-4 text-yellow-500" title="Volta mais rápida" />
+                          <span title="Volta mais rápida">
+                            <Clock className="h-4 w-4 text-yellow-500" />
+                          </span>
                         )}
                         {result.dnf && (
-                          <XIcon className="h-4 w-4 text-orange-500" title="Não completou (DNF)" />
+                          <span title="Não completou (DNF)">
+                            <XIcon className="h-4 w-4 text-orange-500" />
+                          </span>
                         )}
                         {result.dq && (
-                          <Ban className="h-4 w-4 text-red-500" title="Desclassificado (DQ)" />
+                          <span title="Desclassificado (DQ)">
+                            <Ban className="h-4 w-4 text-red-500" />
+                          </span>
                         )}
                       </div>
                     </TableCell>
