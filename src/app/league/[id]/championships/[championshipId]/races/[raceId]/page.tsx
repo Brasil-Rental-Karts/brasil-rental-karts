@@ -251,9 +251,10 @@ export default function RaceDetail({ params }: RaceDetailProps) {
 
           // Mapear pilotos com seus resultados
           const pilotsWithResults: PilotWithResult[] = (categoryPilotsData || []).map(cp => {
+            const pilotProfile = Array.isArray(cp.pilot_profiles) ? cp.pilot_profiles[0] : cp.pilot_profiles;
             const pilot = {
-              id: cp.pilot_profiles.id,
-              name: cp.pilot_profiles.name
+              id: pilotProfile.id,
+              name: pilotProfile.name
             }
 
             const result = (resultsData || []).find(r => r.pilot_id === pilot.id) || null

@@ -364,16 +364,33 @@ export default function CategoryDetail({ params }: CategoryDetailProps) {
                 <div className="divide-y divide-border">
                   {pilots.map((pilot) => (
                     <div key={pilot.id} className="py-3 flex items-center justify-between">
-                      <div className="flex items-center gap-3">
+                      <div className="flex items-center gap-4">
                         <Avatar className="h-8 w-8">
-                          <AvatarImage src={pilot.pilot_profiles.avatar_url || undefined} alt={pilot.pilot_profiles.name} />
-                          <AvatarFallback className="text-xs bg-primary/5">
-                            {pilot.pilot_profiles.name.charAt(0)}
+                          <AvatarImage 
+                            src={Array.isArray(pilot.pilot_profiles) 
+                              ? pilot.pilot_profiles[0].avatar_url || "" 
+                              : pilot.pilot_profiles.avatar_url || ""} 
+                            alt={Array.isArray(pilot.pilot_profiles) 
+                              ? pilot.pilot_profiles[0].name 
+                              : pilot.pilot_profiles.name} 
+                          />
+                          <AvatarFallback>
+                            {Array.isArray(pilot.pilot_profiles) 
+                              ? pilot.pilot_profiles[0].name?.charAt(0) 
+                              : pilot.pilot_profiles.name?.charAt(0)}
                           </AvatarFallback>
                         </Avatar>
                         <div>
-                          <p className="text-sm font-medium">{pilot.pilot_profiles.name}</p>
-                          <p className="text-xs text-muted-foreground">{pilot.pilot_profiles.email}</p>
+                          <p className="text-sm font-medium">
+                            {Array.isArray(pilot.pilot_profiles) 
+                              ? pilot.pilot_profiles[0].name 
+                              : pilot.pilot_profiles.name}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            {Array.isArray(pilot.pilot_profiles) 
+                              ? pilot.pilot_profiles[0].email 
+                              : pilot.pilot_profiles.email}
+                          </p>
                         </div>
                       </div>
                       {isOwner && (
@@ -381,7 +398,12 @@ export default function CategoryDetail({ params }: CategoryDetailProps) {
                           variant="ghost"
                           size="icon"
                           className="h-8 w-8 text-destructive hover:text-destructive"
-                          onClick={() => handleRemovePilot(pilot.pilot_profiles.id)}
+                          onClick={() => {
+                            const pilotProfile = Array.isArray(pilot.pilot_profiles) 
+                              ? pilot.pilot_profiles[0] 
+                              : pilot.pilot_profiles;
+                            handleRemovePilot(pilotProfile.id);
+                          }}
                         >
                           <Trash2 className="h-3.5 w-3.5" />
                         </Button>

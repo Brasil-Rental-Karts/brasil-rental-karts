@@ -1,7 +1,7 @@
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Flag, StepBack } from 'lucide-react'
-import BackButton from '@/components/back-button'
+import { BackButton } from '@/components/back-button'
 
 export default function NotFound() {
   return (
@@ -47,7 +47,7 @@ export default function NotFound() {
             </p>
 
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <BackButton />
+              <BackButton href="/" />
             </div>
           </div>
         </div>

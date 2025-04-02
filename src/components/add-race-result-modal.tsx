@@ -97,10 +97,13 @@ export function AddRaceResultModal({ raceId, championshipId, onSuccess }: AddRac
           // Extrair pilotos únicos
           const uniquePilots = Array.from(
             new Map(
-              categoryPilotsData.map(cp => [
-                cp.pilot_profiles.id,
-                { id: cp.pilot_profiles.id, name: cp.pilot_profiles.name }
-              ])
+              categoryPilotsData.map(cp => {
+                const pilotProfile = Array.isArray(cp.pilot_profiles) ? cp.pilot_profiles[0] : cp.pilot_profiles;
+                return [
+                  pilotProfile.id,
+                  { id: pilotProfile.id, name: pilotProfile.name }
+                ];
+              })
             ).values()
           )
 
