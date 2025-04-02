@@ -10,7 +10,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { ArrowLeft, Trophy, Calendar, Tag, Edit, Users, Plus, Weight } from "lucide-react"
+import { ArrowLeft, Trophy, Calendar, Tag, Edit, Users, Plus, Weight, Trash2 } from "lucide-react"
 import { Loader2 } from "lucide-react"
 import { toast } from "sonner"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
@@ -18,6 +18,14 @@ import { CreateCategoryModal } from "@/components/create-category-modal"
 import { EditChampionshipModal } from "@/components/edit-championship-modal"
 import { format, parseISO } from "date-fns"
 import { ptBR } from "date-fns/locale"
+import { CreateRaceModal } from "@/components/create-race-modal"
+import { EditRaceModal } from "@/components/edit-race-modal"
+import { 
+  CheckCircle, 
+  X as XIcon, 
+  MapPin,
+  Route
+} from "lucide-react"
 
 interface Championship {
   id: string
@@ -53,6 +61,19 @@ interface CategoryWithPilotCount extends Category {
   pilot_count: number
 }
 
+interface Race {
+  id: string
+  championship_id: string
+  name: string
+  description: string | null
+  date: string | null
+  location: string | null
+  track_layout: string | null
+  status: "scheduled" | "completed" | "cancelled"
+  created_at: string
+  updated_at: string
+}
+
 interface ChampionshipDetailProps {
   params: Promise<{
     id: string
@@ -70,6 +91,7 @@ export default function ChampionshipDetail({ params }: ChampionshipDetailProps) 
   const [isOwner, setIsOwner] = useState(false)
   const [categories, setCategories] = useState<CategoryWithPilotCount[]>([])
   const [activeTab, setActiveTab] = useState("overview")
+  const [races, setRaces] = useState<Race[]>([])
   const supabase = createClientComponentClient()
 
   useEffect(() => {
@@ -122,6 +144,9 @@ export default function ChampionshipDetail({ params }: ChampionshipDetailProps) 
 
         // Fetch categories
         await fetchCategories()
+        
+        // Fetch races
+        await fetchRaces()
       } catch (error) {
         console.error("Erro ao buscar dados:", error)
         toast.error("Erro ao carregar dados do campeonato")
@@ -174,6 +199,24 @@ export default function ChampionshipDetail({ params }: ChampionshipDetailProps) 
     }
   }
 
+  const fetchRaces = async () => {
+    if (!championshipId) return
+
+    try {
+      const { data, error } = await supabase
+        .from("races")
+        .select("*")
+        .eq("championship_id", championshipId)
+        .order("date", { ascending: true })
+
+      if (error) throw error
+      
+      setRaces(data || [])
+    } catch (error) {
+      console.error("Erro ao buscar etapas:", error)
+    }
+  }
+
   const handleCategoryCreated = () => {
     fetchCategories()
     setActiveTab("categories")
@@ -207,6 +250,36 @@ export default function ChampionshipDetail({ params }: ChampionshipDetailProps) 
       toast.error("Erro ao atualizar dados")
     } finally {
       setLoading(false)
+    }
+  }
+
+  const handleRaceCreated = () => {
+    fetchRaces()
+    setActiveTab("races")
+  }
+
+  const handleRaceUpdated = () => {
+    fetchRaces()
+  }
+
+  const handleDeleteRace = async (raceId: string) => {
+    if (!confirm("Tem certeza que deseja excluir esta etapa? Esta ação não pode ser desfeita.")) {
+      return
+    }
+
+    try {
+      const { error } = await supabase
+        .from("races")
+        .delete()
+        .eq("id", raceId)
+
+      if (error) throw error
+
+      toast.success("Etapa excluída com sucesso")
+      fetchRaces()
+    } catch (error) {
+      console.error("Erro ao excluir etapa:", error)
+      toast.error("Erro ao excluir etapa")
     }
   }
 
@@ -265,9 +338,10 @@ export default function ChampionshipDetail({ params }: ChampionshipDetailProps) 
       <main className="container mx-auto px-4 py-6 md:py-8 space-y-8">
         {/* Tabs Section */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-2 md:w-auto md:inline-flex">
+          <TabsList className="grid w-full grid-cols-3 md:w-auto md:inline-flex">
             <TabsTrigger value="overview">Visão Geral</TabsTrigger>
             <TabsTrigger value="categories">Categorias</TabsTrigger>
+            <TabsTrigger value="races">Etapas</TabsTrigger>
           </TabsList>
           
           {/* Overview Tab */}
@@ -408,6 +482,110 @@ export default function ChampionshipDetail({ params }: ChampionshipDetailProps) 
                         Detalhes
                       </Button>
                     </CardFooter>
+                  </Card>
+                ))}
+              </div>
+            )}
+          </TabsContent>
+          
+          {/* Races Tab */}
+          <TabsContent value="races" className="space-y-6">
+            <div className="flex items-center justify-between">
+              <h2 className="text-xl font-semibold">Etapas</h2>
+              {isOwner && (
+                <CreateRaceModal 
+                  championshipId={championshipId} 
+                  onSuccess={handleRaceCreated} 
+                />
+              )}
+            </div>
+            
+            {races.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-12 text-center">
+                <div className="bg-muted/50 p-4 rounded-full mb-4">
+                  <Calendar className="h-8 w-8 text-muted-foreground/70" />
+                </div>
+                <h3 className="text-lg font-medium mb-2">Nenhuma etapa encontrada</h3>
+                <p className="text-muted-foreground text-sm max-w-md mb-6">
+                  Adicione etapas para organizar as corridas do campeonato.
+                </p>
+                {isOwner && (
+                  <CreateRaceModal 
+                    championshipId={championshipId} 
+                    onSuccess={handleRaceCreated} 
+                  />
+                )}
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {races.map((race) => (
+                  <Card key={race.id}>
+                    <CardHeader className="pb-2">
+                      <div className="flex justify-between">
+                        <div>
+                          <CardTitle className="text-lg flex items-center gap-2">
+                            {race.name}
+                            {race.status === 'completed' && <CheckCircle className="h-4 w-4 text-green-500" />}
+                            {race.status === 'cancelled' && <XIcon className="h-4 w-4 text-red-500" />}
+                          </CardTitle>
+                          <CardDescription>
+                            {race.status === 'scheduled' && 'Agendada'}
+                            {race.status === 'completed' && 'Concluída'}
+                            {race.status === 'cancelled' && 'Cancelada'}
+                          </CardDescription>
+                        </div>
+                        {isOwner && (
+                          <div className="flex gap-2">
+                            <EditRaceModal
+                              race={race}
+                              onSuccess={handleRaceUpdated}
+                            />
+                            <Button 
+                              variant="outline" 
+                              size="icon" 
+                              className="h-8 w-8 text-destructive" 
+                              onClick={() => handleDeleteRace(race.id)}
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </Button>
+                          </div>
+                        )}
+                      </div>
+                    </CardHeader>
+                    <CardContent>
+                      {race.description && (
+                        <p className="text-sm text-muted-foreground mb-4">{race.description}</p>
+                      )}
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {race.date && (
+                          <div className="flex items-center gap-2">
+                            <Calendar className="h-4 w-4 text-muted-foreground" />
+                            <span className="text-sm">
+                              {new Date(race.date).toLocaleDateString('pt-BR', {
+                                weekday: 'long',
+                                day: 'numeric',
+                                month: 'long',
+                                year: 'numeric',
+                                hour: '2-digit',
+                                minute: '2-digit'
+                              })}
+                            </span>
+                          </div>
+                        )}
+                        {race.location && (
+                          <div className="flex items-center gap-2">
+                            <MapPin className="h-4 w-4 text-muted-foreground" />
+                            <span className="text-sm">{race.location}</span>
+                          </div>
+                        )}
+                        {race.track_layout && (
+                          <div className="flex items-center gap-2">
+                            <Route className="h-4 w-4 text-muted-foreground" />
+                            <span className="text-sm">{race.track_layout}</span>
+                          </div>
+                        )}
+                      </div>
+                    </CardContent>
                   </Card>
                 ))}
               </div>
