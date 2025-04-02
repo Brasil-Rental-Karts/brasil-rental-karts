@@ -58,37 +58,37 @@
   --popover: oklch(1 0 0);
   --popover-foreground: oklch(0.15 0 0);
   
-  /* Cor primária - vermelho mais escuro */
-  --primary: oklch(0.48 0.22 25);
+  /* Cor primária - laranja BRK */
+  --primary: oklch(0.65 0.22 40); /* Laranja vibrante */
   --primary-foreground: oklch(1 0 0);
   
-  /* Cor secundária - cinza quase preto */
-  --secondary: oklch(0.25 0.02 0);
+  /* Cor secundária - preto */
+  --secondary: oklch(0.15 0.02 0);
   --secondary-foreground: oklch(1 0 0);
   
   /* Cores neutras */
   --muted: oklch(0.96 0 0);
   --muted-foreground: oklch(0.45 0 0);
   
-  /* Cores de destaque - tons de vermelho mais claros */
-  --accent: oklch(0.70 0.15 25);
-  --accent-foreground: oklch(1 0 0);
+  /* Cores de destaque - tons de laranja mais claros */
+  --accent: oklch(0.75 0.15 40);
+  --accent-foreground: oklch(0.15 0 0);
   
   /* Cores de alerta */
-  --destructive: oklch(0.55 0.28 25);
+  --destructive: oklch(0.55 0.28 20);
   --destructive-foreground: oklch(1 0 0);
   
   /* Cores de UI */
   --border: oklch(0.85 0 0);
   --input: oklch(0.85 0 0);
-  --ring: oklch(0.65 0 0);
+  --ring: oklch(0.65 0.10 40);
   
   /* Cores para gráficos */
-  --chart-1: oklch(0.48 0.22 25); /* Vermelho escuro */
-  --chart-2: oklch(0.25 0.02 0);  /* Cinza quase preto */
-  --chart-3: oklch(0.65 0.15 25); /* Vermelho médio */
-  --chart-4: oklch(0.35 0.05 0);  /* Cinza médio */
-  --chart-5: oklch(0.75 0.10 25); /* Vermelho claro */
+  --chart-1: oklch(0.65 0.22 40); /* Laranja BRK */
+  --chart-2: oklch(0.15 0.02 0);  /* Preto */
+  --chart-3: oklch(0.55 0.18 40); /* Laranja médio */
+  --chart-4: oklch(0.35 0.05 0);  /* Cinza escuro */
+  --chart-5: oklch(0.75 0.10 40); /* Laranja claro */
   
   /* Cores da barra lateral */
   --sidebar: oklch(0.15 0 0);
@@ -96,9 +96,9 @@
   --sidebar-primary: var(--primary);
   --sidebar-primary-foreground: oklch(1 0 0);
   --sidebar-accent: var(--accent);
-  --sidebar-accent-foreground: oklch(1 0 0);
+  --sidebar-accent-foreground: oklch(0.15 0 0);
   --sidebar-border: oklch(0.25 0 0);
-  --sidebar-ring: oklch(0.65 0 0);
+  --sidebar-ring: oklch(0.65 0.10 40);
 }
 
 .dark {
@@ -114,8 +114,8 @@
   --popover: oklch(0.18 0 0);
   --popover-foreground: oklch(0.98 0 0);
   
-  /* Cor primária - vermelho mais intenso no dark mode */
-  --primary: oklch(0.60 0.25 25);
+  /* Cor primária - laranja mais intenso no dark mode */
+  --primary: oklch(0.65 0.25 40);
   --primary-foreground: oklch(1 0 0);
   
   /* Cor secundária - cinza mais claro no dark mode */
@@ -126,25 +126,25 @@
   --muted: oklch(0.25 0 0);
   --muted-foreground: oklch(0.75 0 0);
   
-  /* Cores de destaque - vermelho mais suave no dark mode */
-  --accent: oklch(0.75 0.18 25);
+  /* Cores de destaque - laranja mais suave no dark mode */
+  --accent: oklch(0.75 0.18 40);
   --accent-foreground: oklch(1 0 0);
   
   /* Cores de alerta */
-  --destructive: oklch(0.65 0.28 25);
+  --destructive: oklch(0.65 0.28 20);
   --destructive-foreground: oklch(1 0 0);
   
   /* Cores de UI */
   --border: oklch(1 0 0 / 15%);
   --input: oklch(1 0 0 / 20%);
-  --ring: oklch(0.55 0 0);
+  --ring: oklch(0.65 0.15 40);
   
   /* Cores para gráficos - no modo escuro */
-  --chart-1: oklch(0.65 0.25 25); /* Vermelho */
+  --chart-1: oklch(0.65 0.25 40); /* Laranja intenso */
   --chart-2: oklch(0.40 0.03 0);  /* Cinza claro */
-  --chart-3: oklch(0.55 0.18 25); /* Vermelho médio */
+  --chart-3: oklch(0.55 0.18 40); /* Laranja médio */
   --chart-4: oklch(0.30 0.02 0);  /* Cinza médio */
-  --chart-5: oklch(0.70 0.15 25); /* Vermelho suave */
+  --chart-5: oklch(0.70 0.15 40); /* Laranja suave */
   
   /* Cores da barra lateral */
   --sidebar: oklch(0.12 0 0);
@@ -154,7 +154,7 @@
   --sidebar-accent: var(--accent);
   --sidebar-accent-foreground: oklch(1 0 0);
   --sidebar-border: oklch(1 0 0 / 15%);
-  --sidebar-ring: oklch(0.55 0 0);
+  --sidebar-ring: oklch(0.65 0.15 40);
 }
 
 @layer base {
@@ -173,47 +173,47 @@
 @layer base {
   :root {
     --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
+    --foreground: 240 10% 3.9%;
     --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
+    --card-foreground: 240 10% 3.9%;
     --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
-    --primary: 221.2 83.2% 53.3%;
-    --primary-foreground: 210 40% 98%;
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
+    --popover-foreground: 240 10% 3.9%;
+    --primary: 24 100% 50%;    /* Laranja BRK */
+    --primary-foreground: 0 0% 100%;
+    --secondary: 240 5.9% 10%;  /* Preto BRK */
+    --secondary-foreground: 0 0% 100%;
+    --muted: 240 4.8% 95.9%;
+    --muted-foreground: 240 3.8% 46.1%;
+    --accent: 24 80% 55%;      /* Laranja mais claro */
+    --accent-foreground: 240 5.9% 10%;
     --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 221.2 83.2% 53.3%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 240 5.9% 90%;
+    --input: 240 5.9% 90%;
+    --ring: 24 100% 50%;
     --radius: 0.5rem;
   }
  
   .dark {
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
-    --card: 222.2 84% 4.9%;
-    --card-foreground: 210 40% 98%;
-    --popover: 222.2 84% 4.9%;
-    --popover-foreground: 210 40% 98%;
-    --primary: 217.2 91.2% 59.8%;
-    --primary-foreground: 222.2 47.4% 11.2%;
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
+    --background: 240 10% 3.9%;
+    --foreground: 0 0% 98%;
+    --card: 240 10% 3.9%;
+    --card-foreground: 0 0% 98%;
+    --popover: 240 10% 3.9%;
+    --popover-foreground: 0 0% 98%;
+    --primary: 24 90% 55%;     /* Laranja BRK em modo escuro */
+    --primary-foreground: 240 5.9% 10%;
+    --secondary: 240 3.7% 15.9%;
+    --secondary-foreground: 0 0% 98%;
+    --muted: 240 3.7% 15.9%;
+    --muted-foreground: 240 5% 64.9%;
+    --accent: 24 70% 55%;      /* Laranja mais suave em modo escuro */
+    --accent-foreground: 0 0% 98%;
     --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 224.3 76.3% 48%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 240 3.7% 15.9%;
+    --input: 240 3.7% 15.9%;
+    --ring: 24 90% 55%;
   }
 }
 
