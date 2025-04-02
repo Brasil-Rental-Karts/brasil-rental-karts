@@ -32,13 +32,18 @@ import {
   Medal,
   Flag,
   Ban,
+  Save,
+  AlertCircle,
 } from "lucide-react"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Input } from "@/components/ui/input"
+import { Checkbox } from "@/components/ui/checkbox"
+import { Label } from "@/components/ui/label"
+import { Textarea } from "@/components/ui/textarea"
 import { Loader2 } from "lucide-react"
 import { toast } from "sonner"
 import { BackButton } from "@/components/back-button"
 import { EditRaceModal } from "@/components/edit-race-modal"
-import { AddRaceResultModal } from "@/components/add-race-result-modal"
-import { EditRaceResultModal } from "@/components/edit-race-result-modal"
 
 interface Race {
   id: string
@@ -63,6 +68,17 @@ interface Championship {
   league_id: string
 }
 
+interface Pilot {
+  id: string
+  name: string
+}
+
+interface Category {
+  id: string
+  name: string
+  pilots: Pilot[]
+}
+
 interface RaceResult {
   id: string
   race_id: string
@@ -74,14 +90,14 @@ interface RaceResult {
   dnf: boolean
   dq: boolean
   notes: string | null
-  pilot: {
-    id: string
-    name: string
-  }
-  category: {
-    id: string
-    name: string
-  }
+}
+
+interface PilotWithResult extends Pilot {
+  result: RaceResult | null
+}
+
+interface CategoryWithPilots extends Category {
+  pilotsWithResults: PilotWithResult[]
 }
 
 interface RaceDetailProps {
@@ -95,6 +111,7 @@ interface RaceDetailProps {
 export default function RaceDetail({ params }: RaceDetailProps) {
   const router = useRouter()
   const [loading, setLoading] = useState(true)
+  const [savingResults, setSavingResults] = useState(false)
   const [leagueId, setLeagueId] = useState<string>("")
   const [championshipId, setChampionshipId] = useState<string>("")
   const [raceId, setRaceId] = useState<string>("")
@@ -102,8 +119,20 @@ export default function RaceDetail({ params }: RaceDetailProps) {
   const [championship, setChampionship] = useState<Championship | null>(null)
   const [league, setLeague] = useState<League | null>(null)
   const [isOwner, setIsOwner] = useState(false)
-  const [results, setResults] = useState<RaceResult[]>([])
+  const [categoriesWithPilots, setCategoriesWithPilots] = useState<CategoryWithPilots[]>([])
+  const [activeTab, setActiveTab] = useState("")
+  const [resultsChanged, setResultsChanged] = useState(false)
   const supabase = createClientComponentClient()
+
+  // Formulário temporário para resultados
+  const [tempResults, setTempResults] = useState<{[key: string]: {
+    position: string,
+    qualification_position: string,
+    fastest_lap: boolean,
+    dnf: boolean,
+    dq: boolean,
+    notes: string
+  }}>({})
 
   useEffect(() => {
     const resolveParams = async () => {
@@ -165,8 +194,8 @@ export default function RaceDetail({ params }: RaceDetailProps) {
         if (raceError) throw raceError
         setRace(raceData)
 
-        // Buscar resultados da etapa
-        await fetchResults()
+        // Buscar categorias com pilotos e resultados
+        await fetchCategoriesWithPilotsAndResults()
       } catch (error) {
         console.error("Erro ao buscar dados:", error)
         toast.error("Erro ao carregar dados da etapa")
@@ -179,26 +208,117 @@ export default function RaceDetail({ params }: RaceDetailProps) {
     fetchData()
   }, [leagueId, championshipId, raceId, router, supabase])
 
-  const fetchResults = async () => {
-    if (!raceId) return
+  const fetchCategoriesWithPilotsAndResults = async () => {
+    if (!championshipId || !raceId) return
 
     try {
-      const { data, error } = await supabase
-        .from("race_results")
-        .select(`
-          *,
-          pilot:pilot_id (id, name),
-          category:category_id (id, name)
-        `)
-        .eq("race_id", raceId)
-        .order("position", { ascending: true, nullsFirst: false })
+      // 1. Buscar todas as categorias do campeonato
+      const { data: categoriesData, error: categoriesError } = await supabase
+        .from("categories")
+        .select("id, name")
+        .eq("championship_id", championshipId)
+        .order("name")
 
-      if (error) throw error
+      if (categoriesError) throw categoriesError
       
-      setResults(data || [])
+      if (!categoriesData || categoriesData.length === 0) {
+        setCategoriesWithPilots([])
+        return
+      }
+
+      // 2. Para cada categoria, buscar os pilotos e resultados
+      const categoriesFull: CategoryWithPilots[] = await Promise.all(
+        categoriesData.map(async (category) => {
+          // Buscar pilotos da categoria
+          const { data: categoryPilotsData, error: pilotsError } = await supabase
+            .from("category_pilots")
+            .select(`
+              pilot_id,
+              pilot_profiles:pilot_id (id, name)
+            `)
+            .eq("category_id", category.id)
+          
+          if (pilotsError) throw pilotsError
+
+          // Buscar resultados para esta categoria nesta etapa
+          const { data: resultsData, error: resultsError } = await supabase
+            .from("race_results")
+            .select("*")
+            .eq("race_id", raceId)
+            .eq("category_id", category.id)
+          
+          if (resultsError) throw resultsError
+
+          // Mapear pilotos com seus resultados
+          const pilotsWithResults: PilotWithResult[] = (categoryPilotsData || []).map(cp => {
+            const pilot = {
+              id: cp.pilot_profiles.id,
+              name: cp.pilot_profiles.name
+            }
+
+            const result = (resultsData || []).find(r => r.pilot_id === pilot.id) || null
+            
+            // Adicionar ao estado temporário de resultados
+            if (result) {
+              setTempResults(prev => ({
+                ...prev,
+                [pilot.id]: {
+                  position: result.position?.toString() || "",
+                  qualification_position: result.qualification_position?.toString() || "",
+                  fastest_lap: result.fastest_lap || false,
+                  dnf: result.dnf || false,
+                  dq: result.dq || false,
+                  notes: result.notes || ""
+                }
+              }))
+            } else {
+              setTempResults(prev => ({
+                ...prev,
+                [pilot.id]: {
+                  position: "",
+                  qualification_position: "",
+                  fastest_lap: false,
+                  dnf: false,
+                  dq: false,
+                  notes: ""
+                }
+              }))
+            }
+
+            return {
+              ...pilot,
+              result
+            }
+          })
+
+          return {
+            id: category.id,
+            name: category.name,
+            pilots: [],
+            pilotsWithResults: pilotsWithResults.sort((a, b) => {
+              // Primeiro ordenar pelos que têm resultado e posição
+              if (a.result?.position && b.result?.position) {
+                return a.result.position - b.result.position
+              }
+              // Depois pelos que têm resultado, mas sem posição
+              if (a.result && !b.result) return -1
+              if (!a.result && b.result) return 1
+              // Por fim, ordenar por nome
+              return a.name.localeCompare(b.name)
+            })
+          }
+        })
+      )
+
+      setCategoriesWithPilots(categoriesFull)
+      
+      // Definir a primeira categoria como ativa se existir
+      if (categoriesFull.length > 0 && !activeTab) {
+        setActiveTab(categoriesFull[0].id)
+      }
     } catch (error) {
-      console.error("Erro ao buscar resultados:", error)
-      toast.error("Erro ao carregar resultados")
+      console.error("Erro ao buscar categorias e pilotos:", error)
+      toast.error("Erro ao carregar dados das categorias")
     }
   }
 
@@ -228,32 +348,83 @@ export default function RaceDetail({ params }: RaceDetailProps) {
     }
   }
 
-  const handleResultAdded = () => {
-    fetchResults()
+  const handleInputChange = (pilotId: string, field: string, value: string | boolean) => {
+    setTempResults(prev => ({
+      ...prev,
+      [pilotId]: {
+        ...prev[pilotId],
+        [field]: value
+      }
+    }))
+    setResultsChanged(true)
   }
 
-  const handleResultUpdated = () => {
-    fetchResults()
-  }
-
-  const handleDeleteResult = async (resultId: string) => {
-    if (!confirm("Tem certeza que deseja excluir este resultado? Esta ação não pode ser desfeita.")) {
-      return
-    }
-
+  const saveResults = async (categoryId: string) => {
+    if (!raceId) return
+    
+    setSavingResults(true)
+    
     try {
-      const { error } = await supabase
-        .from("race_results")
-        .delete()
-        .eq("id", resultId)
-
-      if (error) throw error
-
-      toast.success("Resultado excluído com sucesso")
-      fetchResults()
+      const category = categoriesWithPilots.find(c => c.id === categoryId)
+      if (!category) return
+      
+      // Para cada piloto na categoria
+      for (const pilot of category.pilotsWithResults) {
+        const tempResult = tempResults[pilot.id]
+        if (!tempResult) continue
+        
+        // Verificar se existem dados significativos para salvar
+        const hasData = tempResult.position || 
+                         tempResult.qualification_position || 
+                         tempResult.fastest_lap || 
+                         tempResult.dnf || 
+                         tempResult.dq || 
+                         tempResult.notes
+        
+        // Dados a serem salvos/atualizados
+        const resultData = {
+          race_id: raceId,
+          pilot_id: pilot.id,
+          category_id: categoryId,
+          position: tempResult.position ? parseInt(tempResult.position) : null,
+          qualification_position: tempResult.qualification_position ? parseInt(tempResult.qualification_position) : null,
+          fastest_lap: tempResult.fastest_lap || false,
+          dnf: tempResult.dnf || false,
+          dq: tempResult.dq || false,
+          notes: tempResult.notes || null
+        }
+        
+        if (pilot.result) {
+          // Atualizar resultado existente
+          if (hasData) {
+            await supabase
+              .from("race_results")
+              .update(resultData)
+              .eq("id", pilot.result.id)
+          } else {
+            // Se não tem dados significativos, excluir o resultado
+            await supabase
+              .from("race_results")
+              .delete()
+              .eq("id", pilot.result.id)
+          }
+        } else if (hasData) {
+          // Criar novo resultado apenas se houver dados
+          await supabase
+            .from("race_results")
+            .insert([resultData])
+        }
+      }
+      
+      // Recarregar os dados
+      await fetchCategoriesWithPilotsAndResults()
+      toast.success("Resultados salvos com sucesso")
+      setResultsChanged(false)
     } catch (error) {
-      console.error("Erro ao excluir resultado:", error)
-      toast.error("Erro ao excluir resultado")
+      console.error("Erro ao salvar resultados:", error)
+      toast.error("Erro ao salvar resultados")
+    } finally {
+      setSavingResults(false)
     }
   }
 
@@ -357,98 +528,222 @@ export default function RaceDetail({ params }: RaceDetailProps) {
           </CardContent>
         </Card>
 
-        <div className="flex items-center justify-between">
-          <h2 className="text-xl font-semibold">Resultados</h2>
-          {isOwner && (
-            <AddRaceResultModal 
-              raceId={raceId} 
-              championshipId={championshipId}
-              onSuccess={handleResultAdded} 
-            />
-          )}
-        </div>
-
-        {results.length === 0 ? (
+        <h2 className="text-xl font-semibold">Resultados</h2>
+        
+        {categoriesWithPilots.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-12 text-center">
             <div className="bg-muted/50 p-4 rounded-full mb-4">
-              <Flag className="h-8 w-8 text-muted-foreground/70" />
+              <AlertCircle className="h-8 w-8 text-muted-foreground/70" />
             </div>
-            <h3 className="text-lg font-medium mb-2">Nenhum resultado registrado</h3>
+            <h3 className="text-lg font-medium mb-2">Nenhuma categoria encontrada</h3>
             <p className="text-muted-foreground text-sm max-w-md mb-6">
-              Adicione os resultados dos pilotos nesta etapa.
+              Adicione categorias e pilotos ao campeonato para poder registrar resultados.
             </p>
-            {isOwner && (
-              <AddRaceResultModal 
-                raceId={raceId} 
-                championshipId={championshipId}
-                onSuccess={handleResultAdded} 
-              />
-            )}
           </div>
         ) : (
-          <Card>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="w-16">Pos.</TableHead>
-                  <TableHead>Piloto</TableHead>
-                  <TableHead>Categoria</TableHead>
-                  <TableHead className="w-16">Qual.</TableHead>
-                  <TableHead className="w-24">Status</TableHead>
-                  <TableHead className="text-right">Ações</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {results.map((result) => (
-                  <TableRow key={result.id}>
-                    <TableCell className="font-medium">
-                      {result.position || '-'}
-                    </TableCell>
-                    <TableCell>{result.pilot.name}</TableCell>
-                    <TableCell>{result.category.name}</TableCell>
-                    <TableCell>{result.qualification_position || '-'}</TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-1">
-                        {result.fastest_lap && (
-                          <span title="Volta mais rápida">
-                            <Clock className="h-4 w-4 text-yellow-500" />
-                          </span>
-                        )}
-                        {result.dnf && (
-                          <span title="Não completou (DNF)">
-                            <XIcon className="h-4 w-4 text-orange-500" />
-                          </span>
-                        )}
-                        {result.dq && (
-                          <span title="Desclassificado (DQ)">
-                            <Ban className="h-4 w-4 text-red-500" />
-                          </span>
-                        )}
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+            <TabsList className="grid" style={{ gridTemplateColumns: `repeat(${categoriesWithPilots.length}, minmax(0, 1fr))` }}>
+              {categoriesWithPilots.map(category => (
+                <TabsTrigger key={category.id} value={category.id}>
+                  {category.name}
+                </TabsTrigger>
+              ))}
+            </TabsList>
+            
+            {categoriesWithPilots.map(category => (
+              <TabsContent key={category.id} value={category.id} className="space-y-4">
+                {category.pilotsWithResults.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center py-12 text-center">
+                    <div className="bg-muted/50 p-4 rounded-full mb-4">
+                      <Flag className="h-8 w-8 text-muted-foreground/70" />
+                    </div>
+                    <h3 className="text-lg font-medium mb-2">Nenhum piloto inscrito nesta categoria</h3>
+                    <p className="text-muted-foreground text-sm max-w-md">
+                      Adicione pilotos à categoria para poder registrar resultados.
+                    </p>
+                  </div>
+                ) : (
+                  <>
+                    {resultsChanged && isOwner && (
+                      <div className="flex justify-end mb-4">
+                        <Button 
+                          onClick={() => saveResults(category.id)}
+                          disabled={savingResults}
+                          className="gap-2"
+                        >
+                          {savingResults ? (
+                            <>
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                              Salvando...
+                            </>
+                          ) : (
+                            <>
+                              <Save className="h-4 w-4" />
+                              Salvar Resultados
+                            </>
+                          )}
+                        </Button>
                       </div>
-                    </TableCell>
-                    <TableCell className="text-right">
-                      {isOwner && (
-                        <div className="flex justify-end gap-2">
-                          <EditRaceResultModal
-                            result={result}
-                            onSuccess={handleResultUpdated}
-                          />
-                          <Button 
-                            variant="outline" 
-                            size="icon" 
-                            className="h-8 w-8 text-destructive"
-                            onClick={() => handleDeleteResult(result.id)}
-                          >
-                            <Trash2 className="h-3.5 w-3.5" />
-                          </Button>
-                        </div>
-                      )}
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </Card>
+                    )}
+                    
+                    <Card>
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead className="w-16">Pos.</TableHead>
+                            <TableHead>Piloto</TableHead>
+                            <TableHead className="w-16">Qual.</TableHead>
+                            <TableHead className="w-28">Melhor Volta</TableHead>
+                            <TableHead className="w-20">DNF</TableHead>
+                            <TableHead className="w-20">DQ</TableHead>
+                            <TableHead>Observações</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {category.pilotsWithResults.map((pilot) => (
+                            <TableRow key={pilot.id}>
+                              <TableCell>
+                                {isOwner ? (
+                                  <Input
+                                    type="number"
+                                    min="1"
+                                    value={tempResults[pilot.id]?.position || ""}
+                                    onChange={(e) => handleInputChange(pilot.id, "position", e.target.value)}
+                                    className="w-16"
+                                    placeholder="-"
+                                  />
+                                ) : (
+                                  <span className="font-medium">{pilot.result?.position || '-'}</span>
+                                )}
+                              </TableCell>
+                              <TableCell className="font-medium">{pilot.name}</TableCell>
+                              <TableCell>
+                                {isOwner ? (
+                                  <Input
+                                    type="number"
+                                    min="1"
+                                    value={tempResults[pilot.id]?.qualification_position || ""}
+                                    onChange={(e) => handleInputChange(pilot.id, "qualification_position", e.target.value)}
+                                    className="w-16"
+                                    placeholder="-"
+                                  />
+                                ) : (
+                                  <span>{pilot.result?.qualification_position || '-'}</span>
+                                )}
+                              </TableCell>
+                              <TableCell>
+                                {isOwner ? (
+                                  <div className="flex items-center">
+                                    <Checkbox
+                                      id={`fastest-lap-${pilot.id}`}
+                                      checked={tempResults[pilot.id]?.fastest_lap || false}
+                                      onCheckedChange={(checked) => 
+                                        handleInputChange(pilot.id, "fastest_lap", checked === true)
+                                      }
+                                    />
+                                    <Label htmlFor={`fastest-lap-${pilot.id}`} className="ml-2 text-sm">
+                                      Volta mais rápida
+                                    </Label>
+                                  </div>
+                                ) : (
+                                  pilot.result?.fastest_lap ? (
+                                    <span title="Volta mais rápida" className="flex items-center">
+                                      <Clock className="h-4 w-4 text-yellow-500 mr-1" />
+                                      Sim
+                                    </span>
+                                  ) : "Não"
+                                )}
+                              </TableCell>
+                              <TableCell>
+                                {isOwner ? (
+                                  <div className="flex items-center">
+                                    <Checkbox
+                                      id={`dnf-${pilot.id}`}
+                                      checked={tempResults[pilot.id]?.dnf || false}
+                                      onCheckedChange={(checked) => 
+                                        handleInputChange(pilot.id, "dnf", checked === true)
+                                      }
+                                    />
+                                    <Label htmlFor={`dnf-${pilot.id}`} className="ml-2 text-sm">
+                                      Não completou
+                                    </Label>
+                                  </div>
+                                ) : (
+                                  pilot.result?.dnf ? (
+                                    <span title="Não completou" className="flex items-center">
+                                      <XIcon className="h-4 w-4 text-orange-500 mr-1" />
+                                      Sim
+                                    </span>
+                                  ) : "Não"
+                                )}
+                              </TableCell>
+                              <TableCell>
+                                {isOwner ? (
+                                  <div className="flex items-center">
+                                    <Checkbox
+                                      id={`dq-${pilot.id}`}
+                                      checked={tempResults[pilot.id]?.dq || false}
+                                      onCheckedChange={(checked) => 
+                                        handleInputChange(pilot.id, "dq", checked === true)
+                                      }
+                                    />
+                                    <Label htmlFor={`dq-${pilot.id}`} className="ml-2 text-sm">
+                                      Desclassificado
+                                    </Label>
+                                  </div>
+                                ) : (
+                                  pilot.result?.dq ? (
+                                    <span title="Desclassificado" className="flex items-center">
+                                      <Ban className="h-4 w-4 text-red-500 mr-1" />
+                                      Sim
+                                    </span>
+                                  ) : "Não"
+                                )}
+                              </TableCell>
+                              <TableCell>
+                                {isOwner ? (
+                                  <Textarea
+                                    value={tempResults[pilot.id]?.notes || ""}
+                                    onChange={(e) => handleInputChange(pilot.id, "notes", e.target.value)}
+                                    className="min-h-[40px] h-[40px]"
+                                    placeholder="Observações..."
+                                  />
+                                ) : (
+                                  <span className="text-sm">{pilot.result?.notes || '-'}</span>
+                                )}
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </Card>
+                    
+                    {isOwner && (
+                      <div className="flex justify-end mt-4">
+                        <Button 
+                          onClick={() => saveResults(category.id)}
+                          disabled={savingResults}
+                          className="gap-2"
+                        >
+                          {savingResults ? (
+                            <>
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                              Salvando...
+                            </>
+                          ) : (
+                            <>
+                              <Save className="h-4 w-4" />
+                              Salvar Resultados
+                            </>
+                          )}
+                        </Button>
+                      </div>
+                    )}
+                  </>
+                )}
+              </TabsContent>
+            ))}
+          </Tabs>
         )}
       </main>
     </div>
