@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs"
 import { Button } from "@/components/ui/button"
 import {
@@ -15,30 +15,50 @@ import {
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
-import { Loader2, Plus, Users, Weight } from "lucide-react"
+import { Loader2, Pencil, Users, Weight } from "lucide-react"
 import { toast } from "sonner"
 
-interface CreateCategoryModalProps {
-  championshipId: string
+interface Category {
+  id: string
+  name: string
+  description: string
+  championship_id: string
+  max_pilots: number | null
+  ballast_kg: number | null
+  created_at: string
+  updated_at: string
+}
+
+interface EditCategoryModalProps {
+  category: Category
   onSuccess: () => void
 }
 
-export function CreateCategoryModal({ championshipId, onSuccess }: CreateCategoryModalProps) {
+export function EditCategoryModal({ category, onSuccess }: EditCategoryModalProps) {
   const [isOpen, setIsOpen] = useState(false)
-  const [name, setName] = useState("")
-  const [description, setDescription] = useState("")
-  const [maxPilots, setMaxPilots] = useState<number | null>(null)
-  const [ballastKg, setBallastKg] = useState<number | null>(null)
   const [isLoading, setIsLoading] = useState(false)
+  const [name, setName] = useState(category.name)
+  const [description, setDescription] = useState(category.description || "")
+  const [maxPilots, setMaxPilots] = useState<number | null>(category.max_pilots)
+  const [ballastKg, setBallastKg] = useState<number | null>(category.ballast_kg)
   const supabase = createClientComponentClient()
-
+  
+  // Atualizar os campos quando a categoria mudar
+  useEffect(() => {
+    setName(category.name)
+    setDescription(category.description || "")
+    setMaxPilots(category.max_pilots)
+    setBallastKg(category.ballast_kg)
+  }, [category])
+  
   const handleOpenChange = (open: boolean) => {
     setIsOpen(open)
     if (!open) {
-      setName("")
-      setDescription("")
-      setMaxPilots(null)
-      setBallastKg(null)
+      // Resetar para os valores originais quando fechar sem salvar
+      setName(category.name)
+      setDescription(category.description || "")
+      setMaxPilots(category.max_pilots)
+      setBallastKg(category.ballast_kg)
     }
   }
 
@@ -53,28 +73,23 @@ export function CreateCategoryModal({ championshipId, onSuccess }: CreateCategor
     try {
       const { error } = await supabase
         .from("categories")
-        .insert([
-          {
-            name,
-            description,
-            championship_id: championshipId,
-            max_pilots: maxPilots,
-            ballast_kg: ballastKg
-          }
-        ])
+        .update({
+          name,
+          description,
+          max_pilots: maxPilots,
+          ballast_kg: ballastKg,
+          updated_at: new Date().toISOString()
+        })
+        .eq("id", category.id)
 
       if (error) throw error
 
-      toast.success("Categoria criada com sucesso")
-      setName("")
-      setDescription("")
-      setMaxPilots(null)
-      setBallastKg(null)
+      toast.success("Categoria atualizada com sucesso")
       setIsOpen(false)
       onSuccess()
     } catch (error) {
-      console.error("Erro ao criar categoria:", error)
-      toast.error("Erro ao criar categoria")
+      console.error("Erro ao atualizar categoria:", error)
+      toast.error("Erro ao atualizar categoria")
     } finally {
       setIsLoading(false)
     }
@@ -88,16 +103,15 @@ export function CreateCategoryModal({ championshipId, onSuccess }: CreateCategor
   return (
     <Dialog open={isOpen} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>
-        <Button size="sm" className="gap-1.5">
-          <Plus className="h-3.5 w-3.5" />
-          Nova Categoria
+        <Button variant="outline" size="icon" className="h-8 w-8">
+          <Pencil className="h-3.5 w-3.5" />
         </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-[450px]">
         <DialogHeader>
-          <DialogTitle>Criar Nova Categoria</DialogTitle>
+          <DialogTitle>Editar Categoria</DialogTitle>
           <DialogDescription>
-            Configure os detalhes da categoria para seu campeonato
+            Modifique os detalhes da categoria
           </DialogDescription>
         </DialogHeader>
         
@@ -161,7 +175,7 @@ export function CreateCategoryModal({ championshipId, onSuccess }: CreateCategor
             <Button 
               type="button" 
               variant="outline" 
-              onClick={() => handleOpenChange(false)}
+              onClick={() => setIsOpen(false)}
             >
               Cancelar
             </Button>
@@ -169,10 +183,10 @@ export function CreateCategoryModal({ championshipId, onSuccess }: CreateCategor
               {isLoading ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Criando...
+                  Salvando...
                 </>
               ) : (
-                "Criar Categoria"
+                "Salvar Alterações"
               )}
             </Button>
           </DialogFooter>

@@ -1,5 +1,5 @@
 CREATE TABLE IF NOT EXISTS pilot_profiles (
-    id UUID REFERENCES auth.users ON DELETE CASCADE PRIMARY KEY,
+    id UUID PRIMARY KEY,
     name TEXT NOT NULL,
     email TEXT NOT NULL,
     phone TEXT,
@@ -96,16 +96,71 @@ CREATE TRIGGER update_leagues_updated_at
     FOR EACH ROW
     EXECUTE FUNCTION update_updated_at_column();
 
-CREATE TABLE IF NOT EXISTS categories (
+-- Create championships table
+CREATE TABLE IF NOT EXISTS championships (
     id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
     name TEXT NOT NULL,
     description TEXT,
     league_id UUID NOT NULL REFERENCES leagues(id) ON DELETE CASCADE,
+    start_date DATE,
+    end_date DATE,
+    status TEXT CHECK (status IN ('upcoming', 'active', 'completed')) DEFAULT 'upcoming',
+    logo_url TEXT,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
-        -- Enable RLS on categories
+-- Enable RLS on championships
+ALTER TABLE championships ENABLE ROW LEVEL SECURITY;
+
+-- Create policies for championships
+CREATE POLICY "Anyone can view championships"
+    ON championships FOR SELECT
+    USING (true);
+
+CREATE POLICY "League owners can manage championships"
+    ON championships FOR INSERT
+    WITH CHECK (
+        auth.uid() IN (
+            SELECT owner_id FROM leagues WHERE id = league_id
+        )
+    );
+
+CREATE POLICY "League owners can update championships"
+    ON championships FOR UPDATE
+    USING (
+        auth.uid() IN (
+            SELECT owner_id FROM leagues WHERE id = league_id
+        )
+    );
+
+CREATE POLICY "League owners can delete championships"
+    ON championships FOR DELETE
+    USING (
+        auth.uid() IN (
+            SELECT owner_id FROM leagues WHERE id = league_id
+        )
+    );
+
+-- Create trigger for updating updated_at for championships
+CREATE TRIGGER update_championships_updated_at
+    BEFORE UPDATE ON championships
+    FOR EACH ROW
+    EXECUTE FUNCTION update_updated_at_column();
+
+-- Now create categories linked to championships instead of leagues
+CREATE TABLE IF NOT EXISTS categories (
+    id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+    name TEXT NOT NULL,
+    description TEXT,
+    championship_id UUID NOT NULL REFERENCES championships(id) ON DELETE CASCADE,
+    max_pilots INTEGER,
+    ballast_kg DECIMAL(5,2),
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+-- Enable RLS on categories
 ALTER TABLE categories ENABLE ROW LEVEL SECURITY;
 
 -- Create policies for categories
@@ -117,7 +172,9 @@ CREATE POLICY "League owners can manage categories"
     ON categories FOR INSERT
     WITH CHECK (
         auth.uid() IN (
-            SELECT owner_id FROM leagues WHERE id = league_id
+            SELECT l.owner_id FROM leagues l
+            JOIN championships c ON c.league_id = l.id
+            WHERE c.id = championship_id
         )
     );
 
@@ -125,7 +182,9 @@ CREATE POLICY "League owners can update categories"
     ON categories FOR UPDATE
     USING (
         auth.uid() IN (
-            SELECT owner_id FROM leagues WHERE id = league_id
+            SELECT l.owner_id FROM leagues l
+            JOIN championships c ON c.league_id = l.id
+            WHERE c.id = championship_id
         )
     );
 
@@ -133,7 +192,9 @@ CREATE POLICY "League owners can delete categories"
     ON categories FOR DELETE
     USING (
         auth.uid() IN (
-            SELECT owner_id FROM leagues WHERE id = league_id
+            SELECT l.owner_id FROM leagues l
+            JOIN championships c ON c.league_id = l.id
+            WHERE c.id = championship_id
         )
     );
 
@@ -144,11 +205,11 @@ CREATE TRIGGER update_categories_updated_at
     EXECUTE FUNCTION update_updated_at_column();
 
 CREATE TABLE IF NOT EXISTS category_pilots (
-            id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
-            category_id UUID NOT NULL REFERENCES categories(id) ON DELETE CASCADE,
-            pilot_id UUID NOT NULL REFERENCES pilot_profiles(id) ON DELETE CASCADE,
-            created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
-            UNIQUE(category_id, pilot_id)
+    id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+    category_id UUID NOT NULL REFERENCES categories(id) ON DELETE CASCADE,
+    pilot_id UUID NOT NULL REFERENCES pilot_profiles(id) ON DELETE CASCADE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
+    UNIQUE(category_id, pilot_id)
 );
 
 -- Enable RLS on category_pilots
@@ -164,8 +225,9 @@ CREATE POLICY "League owners can manage category pilots"
     USING (
         auth.uid() IN (
             SELECT l.owner_id FROM leagues l
-            JOIN categories c ON c.league_id = l.id
-            WHERE c.id = category_id
+            JOIN championships champ ON champ.league_id = l.id
+            JOIN categories cat ON cat.championship_id = champ.id
+            WHERE cat.id = category_id
         )
 );
 
@@ -226,3 +288,36 @@ CREATE POLICY "Users can delete league logos from their own folder"
     AND auth.role() = 'authenticated'
     AND (storage.foldername(name))[1] = auth.uid()::text
     );
+
+-- Set up storage policies for championship-logos bucket
+CREATE POLICY "Championship logos are publicly accessible"
+    ON storage.objects FOR SELECT
+    USING (bucket_id = 'championship-logos');
+
+CREATE POLICY "Users can upload championship logos to their own folder"
+    ON storage.objects FOR INSERT
+    WITH CHECK (
+    bucket_id = 'championship-logos' 
+    AND auth.role() = 'authenticated'
+    AND (storage.foldername(name))[1] = auth.uid()::text
+    );
+
+CREATE POLICY "Users can update championship logos in their own folder"
+    ON storage.objects FOR UPDATE
+    USING (
+    bucket_id = 'championship-logos'
+    AND auth.role() = 'authenticated'
+    AND (storage.foldername(name))[1] = auth.uid()::text
+    );
+
+CREATE POLICY "Users can delete championship logos from their own folder"
+    ON storage.objects FOR DELETE
+    USING (
+    bucket_id = 'championship-logos'
+    AND auth.role() = 'authenticated'
+    AND (storage.foldername(name))[1] = auth.uid()::text
+    );
+
+-- Drop statements for old tables (to be run separately when migrating data)
+-- DROP TABLE IF EXISTS category_pilots;
+-- DROP TABLE IF EXISTS categories;

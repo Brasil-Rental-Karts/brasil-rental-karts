@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Flag, StepBack } from 'lucide-react'
+import BackButton from '@/components/back-button'
 
 export default function NotFound() {
   return (
@@ -42,16 +43,11 @@ export default function NotFound() {
             
             <p className="text-muted-foreground mb-8">
               A página que você está procurando pode ter sido removida, renomeada ou está temporariamente indisponível.
-              Que tal voltar para a pista principal?
+              Que tal voltar para onde você estava?
             </p>
 
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Button asChild>
-                <Link href="/" className="flex items-center gap-2">
-                  <StepBack className="h-4 w-4" />
-                  Voltar para a Pista
-                </Link>
-              </Button>
+              <BackButton />
             </div>
           </div>
         </div>

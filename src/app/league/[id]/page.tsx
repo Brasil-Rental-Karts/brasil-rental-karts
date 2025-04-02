@@ -10,7 +10,6 @@ import Link from "next/link"
 import { Loader2 } from "lucide-react"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { EditLeagueModal } from "@/components/edit-league-modal"
-import { CreateCategoryModal } from "@/components/create-category-modal"
 
 interface League {
   id: string
@@ -34,7 +33,7 @@ export default function LeagueDashboard({ params }: LeagueDashboardProps) {
   const [isOwner, setIsOwner] = useState(false)
   const supabase = createClientComponentClient()
   const [id, setId] = useState<string>("")
-  const [categories, setCategories] = useState<any[]>([])
+  const [championships, setChampionships] = useState<any[]>([])
 
   useEffect(() => {
     const resolveParams = async () => {
@@ -74,8 +73,8 @@ export default function LeagueDashboard({ params }: LeagueDashboardProps) {
         // Verificar se o usuário logado é o dono da liga
         setIsOwner(session.user.id === leagueData.owner_id)
         
-        // Fetch categories after authenticating
-        fetchCategories()
+        // Fetch championships
+        fetchChampionships()
       } catch (error) {
         console.error("Erro ao buscar liga:", error)
         router.push("/login")
@@ -87,21 +86,21 @@ export default function LeagueDashboard({ params }: LeagueDashboardProps) {
     checkAuth()
   }, [id, router, supabase])
 
-  const fetchCategories = async () => {
+  const fetchChampionships = async () => {
     if (!id) return
 
     try {
       const { data, error } = await supabase
-        .from("categories")
+        .from("championships")
         .select("*")
         .eq("league_id", id)
         .order("created_at", { ascending: false })
 
       if (error) throw error
       
-      setCategories(data || [])
+      setChampionships(data || [])
     } catch (error) {
-      console.error("Erro ao buscar categorias:", error)
+      console.error("Erro ao buscar campeonatos:", error)
     }
   }
 
@@ -124,10 +123,6 @@ export default function LeagueDashboard({ params }: LeagueDashboardProps) {
     } finally {
       setLoading(false)
     }
-  }
-
-  const handleCategoryCreated = () => {
-    fetchCategories()
   }
 
   if (loading) {
@@ -175,46 +170,9 @@ export default function LeagueDashboard({ params }: LeagueDashboardProps) {
       </header>
 
       <main className="container mx-auto px-4 py-6 md:py-8 space-y-8">
-        {/* Welcome Section */}
-        <section className="bg-gradient-to-r from-primary/5 to-primary/10 rounded-lg p-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-          <div>
-            <h1 className="text-2xl font-bold mb-1">Dashboard</h1>
-            <p className="text-muted-foreground text-sm">{league.description || "Sem descrição"}</p>
-          </div>
-          <div className="flex flex-col sm:flex-row gap-2">
-            {isOwner && categories.length === 0 && (
-              <CreateCategoryModal leagueId={id} onSuccess={handleCategoryCreated} />
-            )}
-            <Button 
-              variant="outline" 
-              size="sm" 
-              className="gap-1.5"
-              onClick={() => router.push(`/league/${id}/categories`)}
-            >
-              <Tag className="h-3.5 w-3.5" />
-              Ver categorias
-            </Button>
-          </div>
-        </section>
-
         {/* Stats Cards */}
         <section>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <Card className="border border-border/40 shadow-none hover:shadow-sm transition-all">
-              <CardHeader className="space-y-0 pb-2">
-                <div className="flex items-center justify-between">
-                  <CardTitle className="text-sm text-muted-foreground">Categorias</CardTitle>
-                  <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
-                    <Tag className="h-4 w-4 text-primary" />
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <p className="text-2xl font-semibold">{categories.length}</p>
-                <p className="text-xs text-muted-foreground mt-1">Categorias cadastradas</p>
-              </CardContent>
-            </Card>
-
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Card className="border border-border/40 shadow-none hover:shadow-sm transition-all">
               <CardHeader className="space-y-0 pb-2">
                 <div className="flex items-center justify-between">
@@ -225,7 +183,7 @@ export default function LeagueDashboard({ params }: LeagueDashboardProps) {
                 </div>
               </CardHeader>
               <CardContent>
-                <p className="text-2xl font-semibold">0</p>
+                <p className="text-2xl font-semibold">{championships.length}</p>
                 <p className="text-xs text-muted-foreground mt-1">Campeonatos ativos</p>
               </CardContent>
             </Card>
@@ -251,30 +209,37 @@ export default function LeagueDashboard({ params }: LeagueDashboardProps) {
         <section>
           <h2 className="text-lg font-semibold mb-4">Ações Rápidas</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            <Card className="border border-border/40 shadow-none hover:shadow-sm transition-all cursor-pointer"
-                  onClick={() => router.push(`/league/${id}/categories`)}>
-              <CardContent className="p-6 flex items-center gap-4">
-                <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
-                  <Tag className="h-5 w-5 text-primary" />
-                </div>
-                <div>
-                  <h3 className="font-medium">Gerenciar Categorias</h3>
-                  <p className="text-sm text-muted-foreground">Adicionar ou editar categorias</p>
-                </div>
-              </CardContent>
-            </Card>
-            
-            <Card className="border border-border/40 shadow-none hover:shadow-sm transition-all cursor-pointer">
+            <Card 
+              className="border border-border/40 shadow-none hover:shadow-sm transition-all cursor-pointer"
+              onClick={() => router.push(`/league/${id}/championships`)}
+            >
               <CardContent className="p-6 flex items-center gap-4">
                 <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
                   <Trophy className="h-5 w-5 text-primary" />
                 </div>
                 <div>
-                  <h3 className="font-medium">Criar Campeonato</h3>
-                  <p className="text-sm text-muted-foreground">Iniciar um novo campeonato</p>
+                  <h3 className="font-medium">Gerenciar Campeonatos</h3>
+                  <p className="text-sm text-muted-foreground">Visualizar ou criar campeonatos</p>
                 </div>
               </CardContent>
             </Card>
+            
+            {isOwner && (
+              <Card 
+                className="border border-border/40 shadow-none hover:shadow-sm transition-all cursor-pointer"
+                onClick={() => router.push(`/league/${id}/championships`)}
+              >
+                <CardContent className="p-6 flex items-center gap-4">
+                  <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
+                    <Plus className="h-5 w-5 text-primary" />
+                  </div>
+                  <div>
+                    <h3 className="font-medium">Criar Campeonato</h3>
+                    <p className="text-sm text-muted-foreground">Iniciar um novo campeonato</p>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
             
             <Card className="border border-border/40 shadow-none hover:shadow-sm transition-all cursor-pointer">
               <CardContent className="p-6 flex items-center gap-4">

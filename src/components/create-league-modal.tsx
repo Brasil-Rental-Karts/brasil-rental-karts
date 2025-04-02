@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from '@/components/ui/dialog'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription, DialogFooter } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -42,6 +42,13 @@ export function CreateLeagueModal({ onSuccess, isOpenExternal, onOpenChange }: C
     setIsOpen(open)
     if (onOpenChange) {
       onOpenChange(open)
+    }
+    
+    if (!open) {
+      setFormData({ name: '', description: '' })
+      setLogoFile(null)
+      setLogoPreview(null)
+      setError('')
     }
   }
 
@@ -121,7 +128,7 @@ export function CreateLeagueModal({ onSuccess, isOpenExternal, onOpenChange }: C
         throw new Error(data.error || 'Falha ao criar liga')
       }
 
-      // Fechar modal e redirecionar para a nova liga
+      // Sucesso
       handleOpenChange(false)
       onSuccess?.()
       router.push(`/league/${data.league.id}`)
@@ -140,135 +147,112 @@ export function CreateLeagueModal({ onSuccess, isOpenExternal, onOpenChange }: C
     }))
   }
 
-  // Resetar o formulário quando o modal fechar
-  const handleClose = (open: boolean) => {
-    handleOpenChange(open)
-    if (!open) {
-      setFormData({ name: '', description: '' })
-      setLogoFile(null)
-      setLogoPreview(null)
-      setError('')
-    }
-  }
-
-  // Não renderizar o DialogTrigger quando controlado externamente
-  const modalContent = (
-    <DialogContent className="sm:max-w-[450px] p-0 overflow-hidden">
-      <DialogHeader className="px-6 pt-6 pb-2">
-        <DialogTitle>Criar Nova Liga</DialogTitle>
-        <DialogDescription className="text-xs text-muted-foreground">
-          Configure os detalhes da sua liga de kartismo
-        </DialogDescription>
-      </DialogHeader>
-      <form onSubmit={handleSubmit} className="space-y-5">
-        <div className="relative bg-gradient-to-r from-primary/5 to-primary/10 py-8">
-          <div className="flex justify-center">
-            <div className="relative group">
-              <Avatar className="h-24 w-24 border-2 border-background shadow-md">
-                <AvatarImage src={logoPreview || undefined} alt="Logo da Liga" />
-                <AvatarFallback className="text-2xl bg-primary/5">
-                  {formData.name ? formData.name.charAt(0) : <Trophy className="h-8 w-8 text-primary/60" />}
-                </AvatarFallback>
-              </Avatar>
-              <div className="absolute inset-0 bg-black/30 rounded-full opacity-0 group-hover:opacity-100 flex items-center justify-center transition-all duration-200">
-                <Label htmlFor="logo" className="cursor-pointer w-full h-full flex items-center justify-center">
-                  <Image className="h-6 w-6 text-white" />
-                  <span className="sr-only">Adicionar logo</span>
-                </Label>
-                <Input
-                  id="logo"
-                  type="file"
-                  accept="image/*"
-                  onChange={handleLogoChange}
-                  className="hidden"
-                />
+  return (
+    <Dialog open={isOpen} onOpenChange={handleOpenChange}>
+      {!isOpenExternal && (
+        <DialogTrigger asChild>
+          <Button size="sm" className="gap-1.5">
+            <Plus className="h-3.5 w-3.5" />
+            Nova Liga
+          </Button>
+        </DialogTrigger>
+      )}
+      <DialogContent className="sm:max-w-[450px]">
+        <DialogHeader>
+          <DialogTitle>Criar Nova Liga</DialogTitle>
+          <DialogDescription>
+            Configure os detalhes da sua liga de kartismo
+          </DialogDescription>
+        </DialogHeader>
+        
+        <form onSubmit={handleSubmit} className="space-y-5">
+          <div className="bg-gradient-to-r from-primary/5 to-primary/10 py-8 rounded-md">
+            <div className="flex justify-center">
+              <div className="relative group">
+                <Avatar className="h-24 w-24 border-2 border-background shadow-md">
+                  <AvatarImage src={logoPreview || undefined} alt="Logo da Liga" />
+                  <AvatarFallback className="text-2xl bg-primary/5">
+                    {formData.name ? formData.name.charAt(0) : <Trophy className="h-8 w-8 text-primary/60" />}
+                  </AvatarFallback>
+                </Avatar>
+                <div className="absolute inset-0 bg-black/30 rounded-full opacity-0 group-hover:opacity-100 flex items-center justify-center transition-all duration-200">
+                  <Label htmlFor="logo" className="cursor-pointer w-full h-full flex items-center justify-center">
+                    <Image className="h-6 w-6 text-white" />
+                    <span className="sr-only">Adicionar logo</span>
+                  </Label>
+                  <Input
+                    id="logo"
+                    type="file"
+                    accept="image/*"
+                    onChange={handleLogoChange}
+                    className="hidden"
+                  />
+                </div>
               </div>
             </div>
           </div>
-        </div>
 
-        <div className="px-6 space-y-4">
-          <div className="space-y-1.5">
-            <Label htmlFor="name" className="text-xs font-medium flex items-center gap-1.5">
-              <Trophy className="h-3.5 w-3.5 text-muted-foreground/70" />
-              Nome da Liga
-            </Label>
-            <Input
-              id="name"
-              name="name"
-              placeholder="Digite o nome da liga"
-              value={formData.name}
-              onChange={handleChange}
-              className="h-9"
-              autoFocus
-              required
-            />
-          </div>
-          
-          <div className="space-y-1.5">
-            <Label htmlFor="description" className="text-xs font-medium">
-              Descrição
-            </Label>
-            <Textarea
-              id="description"
-              name="description"
-              placeholder="Descreva a sua liga e como funcionará"
-              value={formData.description}
-              onChange={handleChange}
-              className="resize-none text-sm min-h-[80px]"
-              rows={3}
-              required
-            />
-          </div>
-          
-          {error && (
-            <div className="bg-destructive/10 px-3 py-2 rounded-md">
-              <p className="text-xs text-destructive">{error}</p>
+          <div className="space-y-4">
+            <div className="space-y-1.5">
+              <Label htmlFor="name" className="text-xs font-medium flex items-center gap-1.5">
+                <Trophy className="h-3.5 w-3.5 text-muted-foreground/70" />
+                Nome da Liga
+              </Label>
+              <Input
+                id="name"
+                name="name"
+                placeholder="Digite o nome da liga"
+                value={formData.name}
+                onChange={handleChange}
+                className="h-9"
+                autoFocus
+                required
+              />
             </div>
-          )}
-        </div>
-
-        <div className="px-6 pb-6 pt-2 flex justify-end gap-2">
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            onClick={() => handleClose(false)}
-            disabled={isLoading}
-          >
-            Cancelar
-          </Button>
-          <Button type="submit" size="sm" disabled={isLoading} className="min-w-[80px]">
-            {isLoading ? (
-              <Loader2 className="h-3.5 w-3.5 animate-spin" />
-            ) : (
-              "Criar Liga"
+            
+            <div className="space-y-1.5">
+              <Label htmlFor="description" className="text-xs font-medium">
+                Descrição
+              </Label>
+              <Textarea
+                id="description"
+                name="description"
+                placeholder="Descreva a sua liga e como funcionará"
+                value={formData.description}
+                onChange={handleChange}
+                className="resize-none text-sm min-h-[80px]"
+                rows={3}
+                required
+              />
+            </div>
+            
+            {error && (
+              <div className="bg-destructive/10 px-3 py-2 rounded-md">
+                <p className="text-xs text-destructive">{error}</p>
+              </div>
             )}
-          </Button>
-        </div>
-      </form>
-    </DialogContent>
-  );
-  
-  // Se controlado externamente, não incluir o trigger
-  if (isOpenExternal !== undefined) {
-    return (
-      <Dialog open={isOpen} onOpenChange={handleClose}>
-        {modalContent}
-      </Dialog>
-    );
-  }
-  
-  // Caso contrário, incluir o trigger padrão
-  return (
-    <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogTrigger asChild>
-        <Button size="sm" variant="outline" className="flex items-center gap-1.5">
-          <Plus className="h-3.5 w-3.5" />
-          Nova Liga
-        </Button>
-      </DialogTrigger>
-      {modalContent}
+          </div>
+
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => handleOpenChange(false)}
+              disabled={isLoading}
+            >
+              Cancelar
+            </Button>
+            <Button type="submit" size="sm" disabled={isLoading} className="min-w-[80px]">
+              {isLoading ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : (
+                "Criar Liga"
+              )}
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
     </Dialog>
-  );
+  )
 } 
