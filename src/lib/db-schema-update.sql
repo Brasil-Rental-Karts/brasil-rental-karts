@@ -144,4 +144,49 @@ CREATE POLICY "League owners can delete races" ON public.races
 CREATE TRIGGER set_updated_at_races
 BEFORE UPDATE ON public.races
 FOR EACH ROW
+EXECUTE FUNCTION update_updated_at_column();
+
+-- Criar tabela para os resultados das etapas
+CREATE TABLE IF NOT EXISTS public.race_results (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    race_id UUID NOT NULL REFERENCES public.races(id) ON DELETE CASCADE,
+    pilot_id UUID NOT NULL REFERENCES public.pilot_profiles(id) ON DELETE CASCADE,
+    category_id UUID NOT NULL REFERENCES public.categories(id) ON DELETE CASCADE,
+    position INTEGER,
+    qualification_position INTEGER,
+    fastest_lap BOOLEAN DEFAULT false,
+    dnf BOOLEAN DEFAULT false,
+    dq BOOLEAN DEFAULT false,
+    notes TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    UNIQUE(race_id, pilot_id) -- Um piloto só pode ter um resultado por etapa
+);
+
+-- Permissões para a tabela race_results
+ALTER TABLE public.race_results ENABLE ROW LEVEL SECURITY;
+
+-- Política de acesso para leitura de race_results (qualquer um pode ler)
+CREATE POLICY "Anyone can read race results" ON public.race_results
+    FOR SELECT USING (true);
+
+-- Política de acesso para inserção/atualização/exclusão (apenas proprietários ou admins da liga)
+CREATE POLICY "League owners can manage race results" ON public.race_results
+    FOR ALL USING (
+        EXISTS (
+            SELECT 1 FROM public.races r
+            JOIN public.championships c ON r.championship_id = c.id
+            JOIN public.leagues l ON c.league_id = l.id
+            WHERE r.id = race_id
+            AND (l.owner_id = auth.uid() OR EXISTS (
+                SELECT 1 FROM public.league_admins la
+                WHERE la.league_id = l.id AND la.user_id = auth.uid()
+            ))
+        )
+    );
+
+-- Trigger para atualizar o campo updated_at
+CREATE TRIGGER set_updated_at_race_results
+BEFORE UPDATE ON public.race_results
+FOR EACH ROW
 EXECUTE FUNCTION update_updated_at_column(); 

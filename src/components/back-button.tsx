@@ -1,18 +1,21 @@
 "use client"
 
-import { Button } from '@/components/ui/button'
-import { StepBack } from 'lucide-react'
+import { Button } from "@/components/ui/button"
+import { ArrowLeft } from "lucide-react"
+import Link from "next/link"
 
-export default function BackButton() {
-  const handleGoBack = () => {
-    // Volta para a página anterior usando o histórico do navegador
-    window.history.back()
-  }
+interface BackButtonProps {
+  href: string
+  label?: string
+}
 
+export function BackButton({ href, label = "Voltar" }: BackButtonProps) {
   return (
-    <Button onClick={handleGoBack} className="flex items-center gap-2">
-      <StepBack className="h-4 w-4" />
-      Voltar para a Pista
+    <Button variant="ghost" size="sm" asChild className="gap-1">
+      <Link href={href}>
+        <ArrowLeft className="h-4 w-4" />
+        {label}
+      </Link>
     </Button>
   )
 } 

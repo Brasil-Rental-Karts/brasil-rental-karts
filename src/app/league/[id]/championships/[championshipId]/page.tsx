@@ -10,7 +10,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { ArrowLeft, Trophy, Calendar, Tag, Edit, Users, Plus, Weight, Trash2 } from "lucide-react"
+import { ArrowLeft, Trophy, Calendar, Tag, Edit, Users, Plus, Weight, Trash2, Flag } from "lucide-react"
 import { Loader2 } from "lucide-react"
 import { toast } from "sonner"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
@@ -556,7 +556,7 @@ export default function ChampionshipDetail({ params }: ChampionshipDetailProps) 
                       {race.description && (
                         <p className="text-sm text-muted-foreground mb-4">{race.description}</p>
                       )}
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                         {race.date && (
                           <div className="flex items-center gap-2">
                             <Calendar className="h-4 w-4 text-muted-foreground" />
@@ -586,6 +586,17 @@ export default function ChampionshipDetail({ params }: ChampionshipDetailProps) 
                         )}
                       </div>
                     </CardContent>
+                    <CardFooter>
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        className="gap-1.5"
+                        onClick={() => router.push(`/league/${leagueId}/championships/${championshipId}/races/${race.id}`)}
+                      >
+                        <Flag className="h-3.5 w-3.5" />
+                        Ver Resultados
+                      </Button>
+                    </CardFooter>
                   </Card>
                 ))}
               </div>
