@@ -161,102 +161,102 @@ export default function CategoriesPage({ params }: CategoriesPageProps) {
   }
 
   return (
-    <div className="min-h-screen flex flex-col bg-background">
-      {/* Header */}
-      <div className="bg-primary/10 py-8">
-        <div className="container mx-auto px-4">
-          <Button 
-            variant="outline" 
-            onClick={() => router.push(`/league/${leagueId}`)}
-            className="mb-6 gap-2"
-          >
-            <ArrowLeft className="h-4 w-4" />
-            Voltar para Dashboard
-          </Button>
-          
-          <div className="flex flex-col md:flex-row justify-between items-start md:items-center">
-            <div>
-              <h1 className="text-3xl font-bold">Categorias</h1>
-              <p className="text-muted-foreground mt-2">
-                Gerencie as categorias da liga {league.name}
-              </p>
+    <div className="min-h-screen bg-background">
+      {/* Header Section */}
+      <header className="bg-white sticky top-0 z-10 border-b">
+        <div className="container mx-auto px-4 py-4">
+          <div className="flex flex-row items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <Button variant="outline" onClick={() => router.push(`/league/${leagueId}`)} size="icon" className="h-9 w-9">
+                <ArrowLeft className="h-4 w-4" />
+              </Button>
+              <Avatar className="h-10 w-10 ring-2 ring-primary/10 ring-offset-2">
+                <AvatarFallback className="text-sm bg-primary/5">
+                  {league.name.charAt(0)}
+                </AvatarFallback>
+              </Avatar>
+              <div className="flex flex-col">
+                <span className="font-medium">{league.name}</span>
+                <span className="text-sm text-muted-foreground">Categorias</span>
+              </div>
             </div>
-            
             {isOwner && (
               <CreateCategoryModal leagueId={leagueId} onSuccess={handleCategoryCreated} />
             )}
           </div>
         </div>
-      </div>
-      
-      {/* Categories */}
-      <div className="container mx-auto px-4 py-12">
-        <Tabs defaultValue="all">
-          <TabsList className="mb-8">
-            <TabsTrigger value="all">Todas as Categorias</TabsTrigger>
-          </TabsList>
-          
-          <TabsContent value="all">
-            {categories.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-12 text-center">
-                <Tag className="h-12 w-12 text-muted-foreground mb-4" />
-                <h3 className="text-2xl font-bold mb-2">Nenhuma categoria encontrada</h3>
-                <p className="text-muted-foreground mb-6 max-w-md">
-                  Você ainda não possui categorias nesta liga.
-                  {isOwner && " Clique no botão acima para criar uma nova categoria."}
-                </p>
-                {isOwner && (
-                  <CreateCategoryModal leagueId={leagueId} onSuccess={handleCategoryCreated} />
-                )}
-              </div>
-            ) : (
-              <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-                {categories.map(category => (
-                  <Card key={category.id} className="border-2 shadow-md hover:shadow-lg transition-shadow">
-                    <CardHeader>
-                      <CardTitle className="flex items-center gap-2">
-                        <Tag className="h-5 w-5 text-primary" />
-                        {category.name}
-                      </CardTitle>
-                      <CardDescription>
-                        {category.description || "Sem descrição"}
-                      </CardDescription>
-                    </CardHeader>
-                    <CardFooter className="flex justify-between gap-2">
-                      <Button 
-                        variant="default" 
-                        className="flex-1"
-                        onClick={() => handleEditCategory(category.id)}
-                      >
-                        {isOwner ? (
-                          <>
-                            <Edit className="h-4 w-4 mr-2" />
-                            Editar
-                          </>
-                        ) : (
-                          <>
-                            <Users className="h-4 w-4 mr-2" />
-                            Ver Pilotos
-                          </>
-                        )}
-                      </Button>
-                      
-                      {isOwner && (
-                        <Button 
-                          variant="destructive" 
-                          onClick={() => handleDeleteCategory(category.id)}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
+      </header>
+
+      <main className="container mx-auto px-4 py-6 md:py-8 space-y-8">
+        {/* Intro Section */}
+        <section className="bg-gradient-to-r from-primary/5 to-primary/10 rounded-lg p-6">
+          <h1 className="text-2xl font-bold mb-2">Categorias</h1>
+          <p className="text-muted-foreground text-sm">Gerencie as categorias da sua liga de kart</p>
+        </section>
+        
+        {/* Categories List */}
+        <section>
+          {categories.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-12 text-center bg-muted/20 rounded-lg border border-dashed">
+              <Tag className="h-12 w-12 text-muted-foreground mb-4" />
+              <h3 className="text-xl font-bold mb-2">Nenhuma categoria encontrada</h3>
+              <p className="text-muted-foreground mb-6 max-w-md">
+                Você ainda não possui categorias nesta liga.
+                {isOwner && " Clique no botão abaixo para criar uma nova categoria."}
+              </p>
+              {isOwner && (
+                <CreateCategoryModal leagueId={leagueId} onSuccess={handleCategoryCreated} />
+              )}
+            </div>
+          ) : (
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+              {categories.map(category => (
+                <Card key={category.id} className="border border-border/40 shadow-none hover:shadow-sm transition-all">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2 text-base">
+                      <Tag className="h-4 w-4 text-primary" />
+                      {category.name}
+                    </CardTitle>
+                    <CardDescription>
+                      {category.description || "Sem descrição"}
+                    </CardDescription>
+                  </CardHeader>
+                  <CardFooter className="flex justify-between gap-2 pt-2">
+                    <Button 
+                      variant="default" 
+                      size="sm"
+                      className="flex-1"
+                      onClick={() => handleEditCategory(category.id)}
+                    >
+                      {isOwner ? (
+                        <>
+                          <Edit className="h-3.5 w-3.5 mr-1.5" />
+                          Editar
+                        </>
+                      ) : (
+                        <>
+                          <Users className="h-3.5 w-3.5 mr-1.5" />
+                          Ver Pilotos
+                        </>
                       )}
-                    </CardFooter>
-                  </Card>
-                ))}
-              </div>
-            )}
-          </TabsContent>
-        </Tabs>
-      </div>
+                    </Button>
+                    
+                    {isOwner && (
+                      <Button 
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleDeleteCategory(category.id)}
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </Button>
+                    )}
+                  </CardFooter>
+                </Card>
+              ))}
+            </div>
+          )}
+        </section>
+      </main>
     </div>
   )
 } 

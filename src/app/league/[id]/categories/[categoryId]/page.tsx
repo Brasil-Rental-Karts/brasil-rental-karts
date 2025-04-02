@@ -251,18 +251,17 @@ export default function CategoryDetail({ params }: CategoryDetailProps) {
         .from("category_pilots")
         .insert({
           category_id: categoryId,
-          pilot_id: pilotId,
-          created_at: new Date().toISOString()
+          pilot_id: pilotId
         })
       
       if (error) throw error
       
       toast.success("Piloto adicionado com sucesso")
+      fetchCategoryPilots()
       setAddPilotModalOpen(false)
-      await fetchCategoryPilots()
     } catch (error) {
       console.error("Erro ao adicionar piloto:", error)
-      toast.error("Erro ao adicionar piloto à categoria")
+      toast.error("Erro ao adicionar piloto")
     }
   }
 
@@ -276,19 +275,18 @@ export default function CategoryDetail({ params }: CategoryDetailProps) {
       if (error) throw error
       
       toast.success("Piloto removido com sucesso")
-      await fetchCategoryPilots()
+      fetchCategoryPilots()
     } catch (error) {
       console.error("Erro ao remover piloto:", error)
-      toast.error("Erro ao remover piloto da categoria")
+      toast.error("Erro ao remover piloto")
     }
   }
 
-  // When the add pilot modal opens, fetch available pilots
   useEffect(() => {
     if (addPilotModalOpen) {
       fetchAvailablePilots()
     }
-  }, [addPilotModalOpen, searchQuery, categoryPilots])
+  }, [addPilotModalOpen, searchQuery])
 
   if (loading) {
     return (
@@ -310,253 +308,212 @@ export default function CategoryDetail({ params }: CategoryDetailProps) {
   }
 
   return (
-    <div className="min-h-screen flex flex-col bg-background">
-      {/* Header */}
-      <div className="bg-primary/10 py-8">
-        <div className="container mx-auto px-4">
-          <Button 
-            variant="outline" 
-            onClick={() => router.push(`/league/${leagueId}/categories`)}
-            className="mb-6 gap-2"
-          >
-            <ArrowLeft className="h-4 w-4" />
-            Voltar para Categorias
-          </Button>
-          
-          <div className="flex flex-col md:flex-row justify-between items-start md:items-center">
-            <div className="flex items-center gap-2">
-              <Tag className="h-6 w-6 text-primary" />
-              <div>
-                <h1 className="text-3xl font-bold">{category.name}</h1>
-                <p className="text-muted-foreground mt-1">
-                  Liga: {league.name}
-                </p>
+    <div className="min-h-screen bg-background">
+      {/* Header Section */}
+      <header className="bg-white sticky top-0 z-10 border-b">
+        <div className="container mx-auto px-4 py-4">
+          <div className="flex flex-row items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <Button variant="outline" onClick={() => router.push(`/league/${leagueId}/categories`)} size="icon" className="h-9 w-9">
+                <ArrowLeft className="h-4 w-4" />
+              </Button>
+              <Avatar className="h-10 w-10 ring-2 ring-primary/10 ring-offset-2">
+                <AvatarFallback className="text-sm bg-primary/5">
+                  <Tag className="h-4 w-4" />
+                </AvatarFallback>
+              </Avatar>
+              <div className="flex flex-col">
+                <span className="font-medium">{category.name}</span>
+                <span className="text-sm text-muted-foreground">Detalhes da categoria</span>
               </div>
             </div>
+            <Button 
+              variant="default" 
+              size="sm"
+              onClick={handleSaveCategory} 
+              disabled={saving}
+            >
+              {saving ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" />
+              ) : (
+                <Save className="h-3.5 w-3.5 mr-1.5" />
+              )}
+              Salvar
+            </Button>
           </div>
         </div>
-      </div>
-      
-      {/* Main Content */}
-      <div className="container mx-auto px-4 py-12">
-        <Tabs defaultValue="details">
-          <TabsList className="mb-8">
-            <TabsTrigger value="details">Detalhes</TabsTrigger>
-            <TabsTrigger value="pilots">Pilotos</TabsTrigger>
-          </TabsList>
-          
-          {/* Details Tab */}
-          <TabsContent value="details">
-            <Card className="max-w-2xl mx-auto">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Tag className="h-5 w-5 text-primary" />
-                  Detalhes da Categoria
-                </CardTitle>
-                <CardDescription>
-                  Edite as informações da categoria
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="grid gap-2">
-                  <Label htmlFor="name">Nome da Categoria</Label>
-                  <Input
-                    id="name"
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    placeholder="Nome da categoria"
-                    disabled={!isOwner || saving}
-                  />
-                </div>
-                
-                <div className="grid gap-2">
-                  <Label htmlFor="description">Descrição</Label>
-                  <Textarea
-                    id="description"
-                    value={description}
-                    onChange={(e) => setDescription(e.target.value)}
-                    placeholder="Descrição da categoria"
-                    disabled={!isOwner || saving}
-                  />
-                </div>
-              </CardContent>
-              {isOwner && (
-                <CardFooter>
-                  <Button 
-                    className="w-full gap-2" 
-                    disabled={saving} 
-                    onClick={handleSaveCategory}
-                  >
-                    {saving ? (
-                      <>
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                        Salvando...
-                      </>
-                    ) : (
-                      <>
-                        <Save className="h-4 w-4" />
-                        Salvar Alterações
-                      </>
-                    )}
-                  </Button>
-                </CardFooter>
-              )}
-            </Card>
-          </TabsContent>
-          
-          {/* Pilots Tab */}
-          <TabsContent value="pilots">
-            <div className="space-y-8">
-              <div className="flex justify-between items-center">
-                <h2 className="text-2xl font-bold">Pilotos na Categoria</h2>
-                {isOwner && (
-                  <Dialog open={addPilotModalOpen} onOpenChange={setAddPilotModalOpen}>
-                    <DialogTrigger asChild>
-                      <Button className="gap-2">
-                        <Plus className="h-4 w-4" />
-                        Adicionar Piloto
-                      </Button>
-                    </DialogTrigger>
-                    <DialogContent className="sm:max-w-[500px]">
-                      <DialogHeader>
-                        <DialogTitle>Adicionar Piloto à Categoria</DialogTitle>
-                      </DialogHeader>
-                      <div className="py-4">
-                        <Input
-                          placeholder="Buscar por nome..."
-                          value={searchQuery}
-                          onChange={(e) => setSearchQuery(e.target.value)}
-                          className="mb-4"
-                        />
-                        
-                        {availablePilots.length === 0 ? (
-                          <div className="text-center py-8">
-                            <User className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                            <h3 className="text-lg font-semibold mb-2">
-                              Nenhum piloto disponível
-                            </h3>
-                            <p className="text-muted-foreground text-sm max-w-sm mx-auto">
-                              Não foram encontrados pilotos que ainda não estejam na categoria.
-                            </p>
-                          </div>
-                        ) : (
-                          <div className="max-h-[300px] overflow-y-auto">
-                            <Table>
-                              <TableHeader>
-                                <TableRow>
-                                  <TableHead>Piloto</TableHead>
-                                  <TableHead className="w-[100px]">Ação</TableHead>
-                                </TableRow>
-                              </TableHeader>
-                              <TableBody>
-                                {availablePilots.map(pilot => (
-                                  <TableRow key={pilot.id}>
-                                    <TableCell>
-                                      <div className="flex items-center gap-2">
-                                        <Avatar className="h-8 w-8">
-                                          <AvatarImage src={pilot.avatar_url || undefined} alt={pilot.name} />
-                                          <AvatarFallback>{pilot.name.charAt(0)}</AvatarFallback>
-                                        </Avatar>
-                                        <div>
-                                          <p className="font-medium">{pilot.name}</p>
-                                          <p className="text-xs text-muted-foreground">{pilot.email}</p>
-                                        </div>
-                                      </div>
-                                    </TableCell>
-                                    <TableCell>
-                                      <Button
-                                        variant="ghost"
-                                        size="sm"
-                                        className="h-8 w-8 p-0"
-                                        onClick={() => handleAddPilot(pilot.id)}
-                                      >
-                                        <Check className="h-4 w-4" />
-                                      </Button>
-                                    </TableCell>
-                                  </TableRow>
-                                ))}
-                              </TableBody>
-                            </Table>
-                          </div>
-                        )}
-                      </div>
-                    </DialogContent>
-                  </Dialog>
-                )}
+      </header>
+
+      <main className="container mx-auto px-4 py-6 md:py-8 space-y-8">
+        {/* Category Details */}
+        <section>
+          <Card className="border border-border/40 shadow-none">
+            <CardHeader>
+              <CardTitle className="text-xl">Informações da Categoria</CardTitle>
+              <CardDescription>
+                Edite os dados desta categoria de kart
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-5">
+              <div className="space-y-2">
+                <Label htmlFor="name">Nome da Categoria</Label>
+                <Input 
+                  id="name" 
+                  placeholder="Nome da categoria" 
+                  value={name} 
+                  onChange={(e) => setName(e.target.value)}
+                  disabled={!isOwner}
+                />
               </div>
-              
-              {/* Pilots List */}
-              {categoryPilots.length === 0 ? (
-                <div className="text-center py-12 border rounded-lg bg-muted/20">
-                  <Users className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                  <h3 className="text-lg font-semibold mb-2">
-                    Nenhum piloto nesta categoria
-                  </h3>
-                  <p className="text-muted-foreground max-w-sm mx-auto mb-6">
-                    Esta categoria ainda não possui pilotos cadastrados.
-                    {isOwner && " Clique no botão acima para adicionar pilotos."}
-                  </p>
-                  {isOwner && (
-                    <Button 
-                      className="gap-2"
-                      onClick={() => setAddPilotModalOpen(true)}
-                    >
-                      <Plus className="h-4 w-4" />
-                      Adicionar Piloto
-                    </Button>
-                  )}
-                </div>
-              ) : (
-                <Card>
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Piloto</TableHead>
-                        <TableHead>Email</TableHead>
-                        {isOwner && <TableHead className="w-[100px]">Ações</TableHead>}
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {categoryPilots.map(cp => (
-                        <TableRow key={cp.id}>
-                          <TableCell>
+              <div className="space-y-2">
+                <Label htmlFor="description">Descrição</Label>
+                <Textarea 
+                  id="description" 
+                  placeholder="Descrição da categoria" 
+                  rows={3}
+                  value={description} 
+                  onChange={(e) => setDescription(e.target.value)}
+                  disabled={!isOwner}
+                />
+              </div>
+            </CardContent>
+          </Card>
+        </section>
+
+        {/* Pilots Section */}
+        <section className="space-y-4">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+            <div>
+              <h2 className="text-lg font-semibold">Pilotos na Categoria</h2>
+              <p className="text-sm text-muted-foreground">Gerencie os pilotos desta categoria</p>
+            </div>
+            {isOwner && (
+              <Dialog open={addPilotModalOpen} onOpenChange={setAddPilotModalOpen}>
+                <DialogTrigger asChild>
+                  <Button size="sm" className="gap-1.5">
+                    <Plus className="h-3.5 w-3.5" />
+                    Adicionar Piloto
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="max-w-md">
+                  <DialogHeader>
+                    <DialogTitle>Adicionar Piloto</DialogTitle>
+                  </DialogHeader>
+                  <div className="py-2">
+                    <Input
+                      placeholder="Buscar por nome..."
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      className="mb-4"
+                    />
+                    <div className="max-h-[300px] overflow-y-auto space-y-2">
+                      {availablePilots.length === 0 ? (
+                        <div className="text-center py-4">
+                          <p className="text-muted-foreground">Nenhum piloto disponível</p>
+                        </div>
+                      ) : (
+                        availablePilots.map(pilot => (
+                          <div 
+                            key={pilot.id} 
+                            className="flex items-center justify-between p-2 hover:bg-muted/50 rounded-md"
+                          >
                             <div className="flex items-center gap-2">
                               <Avatar className="h-8 w-8">
-                                <AvatarImage 
-                                  src={cp.pilot_profiles.avatar_url || undefined} 
-                                  alt={cp.pilot_profiles.name} 
-                                />
-                                <AvatarFallback>{cp.pilot_profiles.name.charAt(0)}</AvatarFallback>
+                                <AvatarImage src={pilot.avatar_url || undefined} alt={pilot.name} />
+                                <AvatarFallback className="text-xs">
+                                  {pilot.name.charAt(0)}
+                                </AvatarFallback>
                               </Avatar>
-                              <span className="font-medium">{cp.pilot_profiles.name}</span>
+                              <div>
+                                <p className="text-sm font-medium">{pilot.name}</p>
+                                <p className="text-xs text-muted-foreground">{pilot.email}</p>
+                              </div>
                             </div>
-                          </TableCell>
-                          <TableCell>
-                            {cp.pilot_profiles.email}
-                          </TableCell>
-                          {isOwner && (
-                            <TableCell>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                className="h-8 w-8 p-0 text-red-500 hover:text-red-600 hover:bg-red-100"
-                                onClick={() => handleRemovePilot(cp.id)}
-                                title="Remover piloto"
-                              >
-                                <X className="h-4 w-4" />
-                              </Button>
-                            </TableCell>
-                          )}
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </Card>
+                            <Button 
+                              variant="ghost" 
+                              size="sm" 
+                              onClick={() => handleAddPilot(pilot.id)}
+                            >
+                              <Plus className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  </div>
+                </DialogContent>
+              </Dialog>
+            )}
+          </div>
+          
+          {categoryPilots.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-12 text-center bg-muted/20 rounded-lg border border-dashed">
+              <Users className="h-12 w-12 text-muted-foreground mb-4" />
+              <h3 className="text-xl font-bold mb-2">Nenhum piloto</h3>
+              <p className="text-muted-foreground mb-6 max-w-md">
+                Ainda não há pilotos nesta categoria.
+                {isOwner && " Adicione pilotos usando o botão acima."}
+              </p>
+              {isOwner && (
+                <Dialog open={addPilotModalOpen} onOpenChange={setAddPilotModalOpen}>
+                  <DialogTrigger asChild>
+                    <Button className="gap-1.5">
+                      <Plus className="h-3.5 w-3.5" />
+                      Adicionar Piloto
+                    </Button>
+                  </DialogTrigger>
+                </Dialog>
               )}
             </div>
-          </TabsContent>
-        </Tabs>
-      </div>
+          ) : (
+            <div className="rounded-md border overflow-hidden">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Piloto</TableHead>
+                    <TableHead>Email</TableHead>
+                    {isOwner && <TableHead className="w-[100px]">Ações</TableHead>}
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {categoryPilots.map(cp => (
+                    <TableRow key={cp.id}>
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          <Avatar className="h-8 w-8">
+                            <AvatarImage 
+                              src={cp.pilot_profiles.avatar_url || undefined} 
+                              alt={cp.pilot_profiles.name} 
+                            />
+                            <AvatarFallback className="text-xs">
+                              {cp.pilot_profiles.name.charAt(0)}
+                            </AvatarFallback>
+                          </Avatar>
+                          <span className="font-medium text-sm">{cp.pilot_profiles.name}</span>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <span className="text-sm text-muted-foreground">{cp.pilot_profiles.email}</span>
+                      </TableCell>
+                      {isOwner && (
+                        <TableCell>
+                          <Button 
+                            variant="outline" 
+                            size="sm"
+                            onClick={() => handleRemovePilot(cp.id)}
+                          >
+                            <X className="h-3.5 w-3.5" />
+                          </Button>
+                        </TableCell>
+                      )}
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          )}
+        </section>
+      </main>
     </div>
   )
 } 

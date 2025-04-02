@@ -150,186 +150,146 @@ export default function LeagueDashboard({ params }: LeagueDashboardProps) {
   }
 
   return (
-    <div className="min-h-screen flex flex-col bg-background">
-      {/* Botão Voltar no topo */}
-      <div className="container mx-auto px-4 py-4">
-        <Button variant="outline" onClick={() => router.push("/pilot")} className="gap-2">
-          <ArrowLeft className="h-4 w-4" />
-          Voltar
-        </Button>
-      </div>
-      
-      {/* Hero Section - Simplificado */}
-      <div className="w-full relative">
-        <div 
-          className="absolute inset-0 z-0 bg-cover bg-center" 
-          style={{
-            backgroundImage: "url('https://images.unsplash.com/photo-1560990816-bb30289c6611')"
-          }}
-        />
-        <div className="absolute inset-0 bg-gradient-to-r from-primary/90 to-secondary/90 z-10" />
-        
-        <div className="container mx-auto px-4 pt-6 pb-10 flex flex-col items-center relative z-20">
-          <Avatar className="h-28 w-28 border-4 border-white shadow-lg mb-4">
-            <AvatarImage src={league.logo_url || undefined} alt={league.name} />
-            <AvatarFallback className="text-4xl">
-              {league.name.charAt(0)}
-            </AvatarFallback>
-          </Avatar>
-          
-          <h1 className="text-3xl font-bold text-white mb-5">
-            {league.name}
-          </h1>
-          
-          {isOwner && (
-            <EditLeagueModal 
-              league={league} 
-              onSuccess={handleLeagueUpdated} 
-              isOwner={isOwner} 
-            />
-          )}
-        </div>
-      </div>
-
-      {/* Stats Section */}
-      <div className="py-12 bg-muted/40">
-        <div className="container mx-auto px-4">
-          <div className="grid gap-6 md:grid-cols-3">
-            <Card className="border-2 shadow-lg hover:shadow-xl transition-shadow">
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-base font-medium">Categorias</CardTitle>
-                <Tag className="h-5 w-5 text-primary" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-3xl font-bold text-primary">{categories.length}</div>
-                <p className="text-sm text-muted-foreground mt-2">
-                  Categorias cadastradas
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card className="border-2 shadow-lg hover:shadow-xl transition-shadow">
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-base font-medium">Campeonatos Ativos</CardTitle>
-                <Trophy className="h-5 w-5 text-primary" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-3xl font-bold text-primary">0</div>
-                <p className="text-sm text-muted-foreground mt-2">
-                  Campeonatos em andamento
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card className="border-2 shadow-lg hover:shadow-xl transition-shadow">
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-base font-medium">Total de Pilotos</CardTitle>
-                <Users className="h-5 w-5 text-primary" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-3xl font-bold text-primary">0</div>
-                <p className="text-sm text-muted-foreground mt-2">
-                  Pilotos registrados
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card className="border-2 shadow-lg hover:shadow-xl transition-shadow">
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-base font-medium">Próxima Corrida</CardTitle>
-                <Calendar className="h-5 w-5 text-primary" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-3xl font-bold text-primary">-</div>
-                <p className="text-sm text-muted-foreground mt-2">
-                  Data do próximo evento
-                </p>
-              </CardContent>
-            </Card>
-          </div>
-        </div>
-      </div>
-
-      {/* Actions Section */}
-      <div className="flex-1 py-12">
-        <div className="container mx-auto px-4">
-          <div className="flex justify-between items-center mb-8">
-            <div>
-              <h2 className="text-3xl font-bold">Ações Rápidas</h2>
-              <p className="text-muted-foreground mt-2">
-                Gerencie sua liga e acompanhe as competições
-              </p>
+    <div className="min-h-screen bg-background">
+      {/* Header Section */}
+      <header className="bg-white sticky top-0 z-10 border-b">
+        <div className="container mx-auto px-4 py-4">
+          <div className="flex flex-row items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <Button variant="outline" onClick={() => router.push("/pilot")} size="icon" className="h-9 w-9">
+                <ArrowLeft className="h-4 w-4" />
+              </Button>
+              <Avatar className="h-10 w-10 ring-2 ring-primary/10 ring-offset-2">
+                <AvatarImage src={league.logo_url || undefined} alt={league.name} />
+                <AvatarFallback className="text-sm bg-primary/5">
+                  {league.name.charAt(0)}
+                </AvatarFallback>
+              </Avatar>
+              <span className="font-medium">{league.name}</span>
             </div>
             {isOwner && (
-              <CreateCategoryModal leagueId={id} onSuccess={handleCategoryCreated} />
+              <EditLeagueModal league={league} onSuccess={handleLeagueUpdated} isOwner={isOwner} />
             )}
           </div>
+        </div>
+      </header>
 
-          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-            <Card className="border-2 shadow-lg hover:shadow-xl transition-shadow">
-              <CardHeader>
-                <div className="flex items-center gap-2">
-                  <Tag className="h-5 w-5 text-primary" />
-                  <CardTitle className="text-xl">Categorias</CardTitle>
+      <main className="container mx-auto px-4 py-6 md:py-8 space-y-8">
+        {/* Welcome Section */}
+        <section className="bg-gradient-to-r from-primary/5 to-primary/10 rounded-lg p-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+          <div>
+            <h1 className="text-2xl font-bold mb-1">Dashboard</h1>
+            <p className="text-muted-foreground text-sm">{league.description || "Sem descrição"}</p>
+          </div>
+          <div className="flex flex-col sm:flex-row gap-2">
+            {isOwner && categories.length === 0 && (
+              <CreateCategoryModal leagueId={id} onSuccess={handleCategoryCreated} />
+            )}
+            <Button 
+              variant="outline" 
+              size="sm" 
+              className="gap-1.5"
+              onClick={() => router.push(`/league/${id}/categories`)}
+            >
+              <Tag className="h-3.5 w-3.5" />
+              Ver categorias
+            </Button>
+          </div>
+        </section>
+
+        {/* Stats Cards */}
+        <section>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <Card className="border border-border/40 shadow-none hover:shadow-sm transition-all">
+              <CardHeader className="space-y-0 pb-2">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-sm text-muted-foreground">Categorias</CardTitle>
+                  <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
+                    <Tag className="h-4 w-4 text-primary" />
+                  </div>
                 </div>
               </CardHeader>
               <CardContent>
-                <p className="text-muted-foreground mb-6">
-                  Crie e gerencie categorias para sua liga
-                </p>
-                <Button
-                  className="w-full h-11 text-base"
-                  onClick={() => router.push(`/league/${id}/categories`)}
-                >
-                  Gerenciar Categorias
-                </Button>
+                <p className="text-2xl font-semibold">{categories.length}</p>
+                <p className="text-xs text-muted-foreground mt-1">Categorias cadastradas</p>
               </CardContent>
             </Card>
 
-            <Card className="border-2 shadow-lg hover:shadow-xl transition-shadow">
-              <CardHeader>
-                <div className="flex items-center gap-2">
-                  <BarChart className="h-5 w-5 text-primary" />
-                  <CardTitle className="text-xl">Estatísticas</CardTitle>
+            <Card className="border border-border/40 shadow-none hover:shadow-sm transition-all">
+              <CardHeader className="space-y-0 pb-2">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-sm text-muted-foreground">Campeonatos</CardTitle>
+                  <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
+                    <Trophy className="h-4 w-4 text-primary" />
+                  </div>
                 </div>
               </CardHeader>
               <CardContent>
-                <p className="text-muted-foreground mb-6">
-                  Acompanhe as estatísticas e desempenho da liga
-                </p>
-                <Button
-                  variant="outline"
-                  className="w-full h-11 text-base"
-                  onClick={() => router.push(`/league/${id}/stats`)}
-                >
-                  Ver Estatísticas
-                </Button>
+                <p className="text-2xl font-semibold">0</p>
+                <p className="text-xs text-muted-foreground mt-1">Campeonatos ativos</p>
               </CardContent>
             </Card>
 
-            <Card className="border-2 shadow-lg hover:shadow-xl transition-shadow">
-              <CardHeader>
-                <div className="flex items-center gap-2">
-                  <Medal className="h-5 w-5 text-primary" />
-                  <CardTitle className="text-xl">Rankings</CardTitle>
+            <Card className="border border-border/40 shadow-none hover:shadow-sm transition-all">
+              <CardHeader className="space-y-0 pb-2">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-sm text-muted-foreground">Pilotos</CardTitle>
+                  <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
+                    <Users className="h-4 w-4 text-primary" />
+                  </div>
                 </div>
               </CardHeader>
               <CardContent>
-                <p className="text-muted-foreground mb-6">
-                  Visualize as classificações e rankings dos pilotos
-                </p>
-                <Button
-                  variant="outline"
-                  className="w-full h-11 text-base"
-                  onClick={() => router.push(`/league/${id}/rankings`)}
-                >
-                  Ver Rankings
-                </Button>
+                <p className="text-2xl font-semibold">0</p>
+                <p className="text-xs text-muted-foreground mt-1">Pilotos registrados</p>
               </CardContent>
             </Card>
           </div>
-        </div>
-      </div>
+        </section>
+
+        {/* Quick Actions Section */}
+        <section>
+          <h2 className="text-lg font-semibold mb-4">Ações Rápidas</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <Card className="border border-border/40 shadow-none hover:shadow-sm transition-all cursor-pointer"
+                  onClick={() => router.push(`/league/${id}/categories`)}>
+              <CardContent className="p-6 flex items-center gap-4">
+                <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
+                  <Tag className="h-5 w-5 text-primary" />
+                </div>
+                <div>
+                  <h3 className="font-medium">Gerenciar Categorias</h3>
+                  <p className="text-sm text-muted-foreground">Adicionar ou editar categorias</p>
+                </div>
+              </CardContent>
+            </Card>
+            
+            <Card className="border border-border/40 shadow-none hover:shadow-sm transition-all cursor-pointer">
+              <CardContent className="p-6 flex items-center gap-4">
+                <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
+                  <Trophy className="h-5 w-5 text-primary" />
+                </div>
+                <div>
+                  <h3 className="font-medium">Criar Campeonato</h3>
+                  <p className="text-sm text-muted-foreground">Iniciar um novo campeonato</p>
+                </div>
+              </CardContent>
+            </Card>
+            
+            <Card className="border border-border/40 shadow-none hover:shadow-sm transition-all cursor-pointer">
+              <CardContent className="p-6 flex items-center gap-4">
+                <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
+                  <Calendar className="h-5 w-5 text-primary" />
+                </div>
+                <div>
+                  <h3 className="font-medium">Agendar Corrida</h3>
+                  <p className="text-sm text-muted-foreground">Criar novo evento de corrida</p>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </section>
+      </main>
     </div>
   )
 } 
