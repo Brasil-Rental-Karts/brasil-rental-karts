@@ -291,21 +291,14 @@ export default function RaceDetail({ params }: RaceDetailProps) {
             }
           })
 
+          // Ordenar pilotsWithResults por ordem alfabética
+          pilotsWithResults.sort((a, b) => a.name.localeCompare(b.name));
+
           return {
             id: category.id,
             name: category.name,
             pilots: [],
-            pilotsWithResults: pilotsWithResults.sort((a, b) => {
-              // Primeiro ordenar pelos que têm resultado e posição
-              if (a.result?.position && b.result?.position) {
-                return a.result.position - b.result.position
-              }
-              // Depois pelos que têm resultado, mas sem posição
-              if (a.result && !b.result) return -1
-              if (!a.result && b.result) return 1
-              // Por fim, ordenar por nome
-              return a.name.localeCompare(b.name)
-            })
+            pilotsWithResults
           }
         })
       )
@@ -564,28 +557,6 @@ export default function RaceDetail({ params }: RaceDetailProps) {
                   </div>
                 ) : (
                   <>
-                    {resultsChanged && isOwner && (
-                      <div className="flex justify-end mb-4">
-                        <Button 
-                          onClick={() => saveResults(category.id)}
-                          disabled={savingResults}
-                          className="gap-2"
-                        >
-                          {savingResults ? (
-                            <>
-                              <Loader2 className="h-4 w-4 animate-spin" />
-                              Salvando...
-                            </>
-                          ) : (
-                            <>
-                              <Save className="h-4 w-4" />
-                              Salvar Resultados
-                            </>
-                          )}
-                        </Button>
-                      </div>
-                    )}
-                    
                     <Card>
                       <Table>
                         <TableHeader>
@@ -718,7 +689,7 @@ export default function RaceDetail({ params }: RaceDetailProps) {
                       </Table>
                     </Card>
                     
-                    {isOwner && (
+                    {isOwner && resultsChanged && (
                       <div className="flex justify-end mt-4">
                         <Button 
                           onClick={() => saveResults(category.id)}
