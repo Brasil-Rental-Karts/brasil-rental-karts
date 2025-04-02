@@ -447,10 +447,14 @@ export default function RaceDetail({ params }: RaceDetailProps) {
         <div className="container mx-auto px-4 py-4">
           <div className="flex flex-row items-center justify-between gap-4">
             <div className="flex items-center gap-3">
-              <BackButton 
-                href={`/league/${leagueId}/championships/${championshipId}`} 
-                label="Voltar para o Campeonato" 
-              />
+              <Button 
+                variant="outline" 
+                onClick={() => router.push(`/league/${leagueId}/championships/${championshipId}`)} 
+                size="icon" 
+                className="h-9 w-9"
+              >
+                <ArrowLeft className="h-4 w-4" />
+              </Button>
               <div>
                 <h1 className="text-2xl font-bold">{race.name}</h1>
                 <div className="flex items-center text-sm text-muted-foreground">
