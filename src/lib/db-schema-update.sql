@@ -44,7 +44,11 @@ CREATE POLICY "Users can update their own profile"
     ON pilot_profiles FOR UPDATE
     USING (auth.uid()::text = id::text);
 
--- Trigger para atualizar o campo updated_at continua o mesmo 
+-- Trigger para atualizar o campo updated_at
+CREATE TRIGGER set_updated_at_league_admins
+BEFORE UPDATE ON public.league_admins
+FOR EACH ROW
+EXECUTE FUNCTION update_updated_at_column();
 
 -- Criar tabela para administradores de ligas
 CREATE TABLE IF NOT EXISTS public.league_admins (
@@ -72,12 +76,6 @@ CREATE POLICY "League owners can manage admins" ON public.league_admins
             AND l.owner_id = auth.uid()
         )
     );
-
--- Trigger para atualizar o campo updated_at
-CREATE TRIGGER set_updated_at_league_admins
-BEFORE UPDATE ON public.league_admins
-FOR EACH ROW
-EXECUTE FUNCTION public.set_updated_at();
 
 -- Criar tabela para as etapas do campeonato
 CREATE TABLE IF NOT EXISTS public.races (
@@ -146,4 +144,4 @@ CREATE POLICY "League owners can delete races" ON public.races
 CREATE TRIGGER set_updated_at_races
 BEFORE UPDATE ON public.races
 FOR EACH ROW
-EXECUTE FUNCTION public.set_updated_at(); 
+EXECUTE FUNCTION update_updated_at_column(); 
