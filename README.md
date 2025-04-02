@@ -46,7 +46,6 @@ O Brasil Rental Karts foi desenvolvido utilizando tecnologias modernas para gara
 ### Pré-requisitos
 - Node.js 18 ou superior
 - npm, yarn, pnpm ou bun
-- Docker e Docker Compose (opcional, para execução local do SonarQube)
 
 ### Instalação
 
@@ -94,21 +93,6 @@ npm run test:watch
 
 # Executar testes com relatório de cobertura
 npm run test:coverage
-```
-
-### SonarQube
-
-O projeto está configurado para utilizar o SonarQube para análise de qualidade de código. Para mais informações sobre como configurar e utilizar o SonarQube, consulte o arquivo [SONARQUBE.md](SONARQUBE.md).
-
-```bash
-# Iniciar o servidor SonarQube local (requer Docker)
-npm run sonar:start
-
-# Executar a análise do SonarQube
-npm run sonar
-
-# Desligar o servidor SonarQube local
-npm run sonar:stop
 ```
 
 ## Estrutura do Projeto
