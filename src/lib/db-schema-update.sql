@@ -1,3 +1,12 @@
+-- Criar ou atualizar a função set_updated_at para usar nos triggers
+CREATE OR REPLACE FUNCTION public.set_updated_at()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.updated_at = CURRENT_TIMESTAMP;
+    RETURN NEW;
+END;
+$$ language 'plpgsql';
+
 -- Atualização da tabela pilot_profiles para remover a restrição de foreign key com auth.users
 ALTER TABLE pilot_profiles 
 DROP CONSTRAINT IF EXISTS pilot_profiles_id_fkey;
