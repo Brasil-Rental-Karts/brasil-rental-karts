@@ -73,8 +73,7 @@ export function EditLeagueModal({ league, onSuccess, isOwner }: EditLeagueModalP
         }
 
         const fileExt = logoFile.name.split(".").pop()
-        const fileName = `${league.id}-${Math.random()}.${fileExt}`
-        const filePath = `${session.user.id}/${fileName}`
+        const fileName = `${session.user.id}/${Date.now()}-${Math.random()}.${fileExt}`
 
         // Remover logo antigo se existir
         if (league.logo_url) {
@@ -98,7 +97,7 @@ export function EditLeagueModal({ league, onSuccess, isOwner }: EditLeagueModalP
         // Upload do novo logo
         const { error: uploadError } = await supabase.storage
           .from("league-logos")
-          .upload(filePath, logoFile, {
+          .upload(fileName, logoFile, {
             cacheControl: '3600',
             upsert: true
           })
@@ -109,14 +108,13 @@ export function EditLeagueModal({ league, onSuccess, isOwner }: EditLeagueModalP
             ligaId: league.id,
             userId: session.user.id
           });
-          toast.error("Erro ao fazer upload do logo. Tente novamente.")
-          return
+          throw new Error('Erro ao fazer upload do logo')
         }
 
         // Obter URL pública
         const { data: { publicUrl } } = supabase.storage
           .from("league-logos")
-          .getPublicUrl(filePath)
+          .getPublicUrl(fileName)
 
         logoUrl = publicUrl
       }

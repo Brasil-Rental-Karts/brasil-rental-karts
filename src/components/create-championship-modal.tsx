@@ -60,20 +60,25 @@ export function CreateChampionshipModal({ leagueId, onSuccess }: CreateChampions
       
       const userId = session.user.id
       const fileExt = logoFile.name.split('.').pop()
-      const fileName = `${userId}/${uuidv4()}.${fileExt}`
-      const filePath = `${fileName}`
+      const fileName = `${userId}/${Date.now()}-${uuidv4()}.${fileExt}`
       
       // Upload do arquivo para o bucket championship-logos
-      const { error: uploadError, data } = await supabase.storage
+      const { error: uploadError } = await supabase.storage
         .from('championship-logos')
-        .upload(filePath, logoFile)
+        .upload(fileName, logoFile, {
+          cacheControl: '3600',
+          upsert: true
+        })
       
-      if (uploadError) throw uploadError
+      if (uploadError) {
+        console.error("Erro ao fazer upload da logo:", uploadError)
+        throw uploadError
+      }
       
       // Obter URL pública do arquivo
       const { data: { publicUrl } } = supabase.storage
         .from('championship-logos')
-        .getPublicUrl(filePath)
+        .getPublicUrl(fileName)
       
       return publicUrl
     } catch (error) {

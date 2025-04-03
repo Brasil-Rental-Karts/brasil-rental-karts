@@ -10,12 +10,14 @@ import { Textarea } from "@/components/ui/textarea"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { ArrowLeft, Trophy, Calendar, Tag, Edit, Users, Plus, Weight, Trash2, Flag } from "lucide-react"
+import { ArrowLeft, Trophy, Calendar, Tag, Edit, Users, Plus, Weight, Trash2, Flag, Medal, ArrowUp, ArrowDown, Minus } from "lucide-react"
 import { Loader2 } from "lucide-react"
 import { toast } from "sonner"
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { CreateCategoryModal } from "@/components/create-category-modal"
 import { EditChampionshipModal } from "@/components/edit-championship-modal"
+import { ScoringSystemModal } from "@/components/scoring-system-modal"
 import { format, parseISO } from "date-fns"
 import { ptBR } from "date-fns/locale"
 import { CreateRaceModal } from "@/components/create-race-modal"
@@ -36,6 +38,7 @@ interface Championship {
   end_date: string | null
   status: 'upcoming' | 'active' | 'completed'
   logo_url: string | null
+  scoring_system_id: string
   created_at: string
   updated_at: string
 }
@@ -74,6 +77,50 @@ interface Race {
   updated_at: string
 }
 
+interface ScoringSystem {
+  id: string
+  name: string
+  description: string
+  is_default: boolean
+  points: Record<string, number>
+}
+
+interface RaceResult {
+  id: string
+  race_id: string
+  pilot_id: string
+  category_id: string
+  position: number | null
+  qualification_position: number | null
+  fastest_lap: boolean
+  dnf: boolean
+  dq: boolean
+  notes: string | null
+  created_at: string
+  updated_at: string
+}
+
+interface Pilot {
+  id: string
+  name: string
+  avatar_url: string | null
+  email: string
+}
+
+interface PilotStanding {
+  pilot_id: string
+  pilot_name: string
+  pilot_avatar: string | null
+  total_points: number
+  positions: Record<string, number | null> // race_id -> position
+  fastest_laps: number
+  dnfs: number
+  dqs: number
+  // Campos para exibição
+  position?: number
+  previous_position?: number
+}
+
 interface ChampionshipDetailProps {
   params: Promise<{
     id: string
@@ -92,6 +139,14 @@ export default function ChampionshipDetail({ params }: ChampionshipDetailProps) 
   const [categories, setCategories] = useState<CategoryWithPilotCount[]>([])
   const [activeTab, setActiveTab] = useState("overview")
   const [races, setRaces] = useState<Race[]>([])
+  const [scoringSystem, setScoringSystem] = useState<ScoringSystem | null>(null)
+  const [pilotStandings, setPilotStandings] = useState<Record<string, PilotStanding[]>>({})
+  const [loadingStandings, setLoadingStandings] = useState(false)
+  const [standingsCategory, setStandingsCategory] = useState<string | null>(null)
+  const [selectedPilot, setSelectedPilot] = useState<PilotStanding | null>(null)
+  const [selectedPilotResults, setSelectedPilotResults] = useState<Record<string, any>>({})
+  const [loadingPilotResults, setLoadingPilotResults] = useState(false)
+  const [isDetailDialogOpen, setIsDetailDialogOpen] = useState(false)
   const supabase = createClientComponentClient()
 
   useEffect(() => {
@@ -141,6 +196,19 @@ export default function ChampionshipDetail({ params }: ChampionshipDetailProps) 
 
         if (championshipError) throw championshipError
         setChampionship(championshipData)
+
+        // Fetch scoring system if exists
+        if (championshipData.scoring_system_id) {
+          const { data: scoringData, error: scoringError } = await supabase
+            .from("scoring_systems")
+            .select("*")
+            .eq("id", championshipData.scoring_system_id)
+            .single()
+          
+          if (!scoringError && scoringData) {
+            setScoringSystem(scoringData)
+          }
+        }
 
         // Fetch categories
         await fetchCategories()
@@ -240,6 +308,19 @@ export default function ChampionshipDetail({ params }: ChampionshipDetailProps) 
         if (championshipError) throw championshipError
         setChampionship(championshipData)
         
+        // Fetch scoring system if exists
+        if (championshipData.scoring_system_id) {
+          const { data: scoringData, error: scoringError } = await supabase
+            .from("scoring_systems")
+            .select("*")
+            .eq("id", championshipData.scoring_system_id)
+            .single()
+          
+          if (!scoringError && scoringData) {
+            setScoringSystem(scoringData)
+          }
+        }
+        
         // Também podemos atualizar as categorias, se necessário
         await fetchCategories()
       }
@@ -282,6 +363,249 @@ export default function ChampionshipDetail({ params }: ChampionshipDetailProps) 
       toast.error("Erro ao excluir etapa")
     }
   }
+
+  const fetchPilotStandings = async () => {
+    if (!championshipId || !championship?.scoring_system_id) return
+    
+    setLoadingStandings(true)
+    
+    try {
+      // 1. Obter as categorias
+      const { data: categoriesData, error: categoriesError } = await supabase
+        .from("categories")
+        .select("id, name")
+        .eq("championship_id", championshipId)
+      
+      if (categoriesError) throw categoriesError
+      if (!categoriesData || categoriesData.length === 0) return
+      
+      // Se nenhuma categoria for selecionada, selecionar a primeira
+      if (!standingsCategory && categoriesData.length > 0) {
+        setStandingsCategory(categoriesData[0].id)
+      }
+      
+      // 2. Obter os pilotos por categoria
+      const standingsByCategory: Record<string, PilotStanding[]> = {}
+      
+      for (const category of categoriesData) {
+        // Obter os pilotos da categoria
+        const { data: pilotsData, error: pilotsError } = await supabase
+          .from("category_pilots")
+          .select(`
+            pilot_id,
+            pilot_profiles (
+              id,
+              name,
+              avatar_url,
+              email
+            )
+          `)
+          .eq("category_id", category.id)
+        
+        if (pilotsError) {
+          console.error("Erro ao buscar pilotos da categoria:", pilotsError)
+          continue
+        }
+        
+        if (!pilotsData || pilotsData.length === 0) continue
+        
+        // Criar estrutura inicial de classificação para esta categoria
+        standingsByCategory[category.id] = pilotsData.map(entry => ({
+          pilot_id: entry.pilot_id,
+          pilot_name: (entry.pilot_profiles as any).name,
+          pilot_avatar: (entry.pilot_profiles as any).avatar_url,
+          total_points: 0,
+          positions: {},
+          fastest_laps: 0,
+          dnfs: 0,
+          dqs: 0
+        }))
+        
+        // 3. Obter todas as corridas do campeonato
+        const { data: racesData, error: racesError } = await supabase
+          .from("races")
+          .select("id")
+          .eq("championship_id", championshipId)
+        
+        if (racesError) {
+          console.error("Erro ao buscar corridas:", racesError)
+          continue
+        }
+        
+        if (!racesData || racesData.length === 0) continue
+        
+        // 4. Obter o sistema de pontuação
+        const { data: scoringSystemData, error: scoringError } = await supabase
+          .from("scoring_systems")
+          .select("points")
+          .eq("id", championship.scoring_system_id)
+          .single()
+        
+        if (scoringError) {
+          console.error("Erro ao buscar sistema de pontuação:", scoringError)
+          continue
+        }
+        
+        const scoringSystem = scoringSystemData.points as Record<string, number>
+        
+        // 5. Para cada corrida, obter os resultados dos pilotos da categoria
+        for (const race of racesData) {
+          const { data: resultsData, error: resultsError } = await supabase
+            .from("race_results")
+            .select("*")
+            .eq("race_id", race.id)
+            .eq("category_id", category.id)
+          
+          if (resultsError) {
+            console.error("Erro ao buscar resultados da corrida:", resultsError)
+            continue
+          }
+          
+          if (!resultsData || resultsData.length === 0) continue
+          
+          // 6. Atualizar os pontos e estatísticas de cada piloto
+          for (const result of resultsData) {
+            const pilotIndex = standingsByCategory[category.id].findIndex(
+              p => p.pilot_id === result.pilot_id
+            )
+            
+            if (pilotIndex === -1) continue
+            
+            // Atualizar a posição do piloto nesta corrida
+            standingsByCategory[category.id][pilotIndex].positions[race.id] = result.position
+            
+            // Atualizar estatísticas
+            if (result.fastest_lap) {
+              standingsByCategory[category.id][pilotIndex].fastest_laps += 1
+            }
+            
+            if (result.dnf) {
+              standingsByCategory[category.id][pilotIndex].dnfs += 1
+            }
+            
+            if (result.dq) {
+              standingsByCategory[category.id][pilotIndex].dqs += 1
+            }
+            
+            // Calcular pontos se tiver posição e não estiver desqualificado
+            if (result.position !== null && !result.dq) {
+              const positionStr = result.position.toString()
+              const points = scoringSystem[positionStr] || 0
+              standingsByCategory[category.id][pilotIndex].total_points += points
+            }
+          }
+        }
+        
+        // 7. Ordenar os pilotos por pontuação
+        standingsByCategory[category.id].sort((a, b) => b.total_points - a.total_points)
+        
+        // 8. Atribuir a posição atual
+        standingsByCategory[category.id].forEach((pilot, index) => {
+          pilot.position = index + 1
+          pilot.previous_position = index + 1 // Por enquanto sem histórico anterior
+        })
+      }
+      
+      setPilotStandings(standingsByCategory)
+    } catch (error) {
+      console.error("Erro ao calcular classificação:", error)
+      toast.error("Erro ao carregar classificação do campeonato")
+    } finally {
+      setLoadingStandings(false)
+    }
+  }
+
+  const fetchPilotResultDetails = async (pilotId: string, categoryId: string) => {
+    if (!championshipId || !pilotId) return
+    
+    setLoadingPilotResults(true)
+    
+    try {
+      // Obter todas as corridas do campeonato
+      const { data: racesData, error: racesError } = await supabase
+        .from("races")
+        .select("id, name, date")
+        .eq("championship_id", championshipId)
+        .order("date", { ascending: true })
+      
+      if (racesError) throw racesError
+      if (!racesData || racesData.length === 0) return
+      
+      // Obter os resultados do piloto em cada corrida
+      const resultsPromises = racesData.map(async (race) => {
+        const { data, error } = await supabase
+          .from("race_results")
+          .select("*")
+          .eq("race_id", race.id)
+          .eq("pilot_id", pilotId)
+          .eq("category_id", categoryId)
+          .single()
+        
+        // Se não houver resultado para esta corrida, retornar valores padrão
+        if (error || !data) {
+          return {
+            race_id: race.id,
+            race_name: race.name,
+            race_date: race.date,
+            position: null,
+            qualification_position: null,
+            fastest_lap: false,
+            dnf: false,
+            dq: false,
+            points: 0
+          }
+        }
+        
+        // Calcular pontos se tiver posição e não estiver desqualificado
+        let points = 0
+        if (scoringSystem && data.position !== null && !data.dq) {
+          const positionStr = data.position.toString()
+          points = scoringSystem.points[positionStr] || 0
+        }
+        
+        return {
+          race_id: race.id,
+          race_name: race.name,
+          race_date: race.date,
+          position: data.position,
+          qualification_position: data.qualification_position,
+          fastest_lap: data.fastest_lap,
+          dnf: data.dnf,
+          dq: data.dq,
+          points
+        }
+      })
+      
+      const results = await Promise.all(resultsPromises)
+      
+      // Criar um objeto com os resultados por corrida
+      const resultsByRace: Record<string, any> = {}
+      results.forEach(result => {
+        resultsByRace[result.race_id] = result
+      })
+      
+      setSelectedPilotResults(resultsByRace)
+    } catch (error) {
+      console.error("Erro ao buscar detalhes do piloto:", error)
+      toast.error("Erro ao carregar detalhes do piloto")
+    } finally {
+      setLoadingPilotResults(false)
+    }
+  }
+
+  const handleShowPilotDetails = (pilot: PilotStanding) => {
+    if (!standingsCategory) return
+    
+    setSelectedPilot(pilot)
+    setIsDetailDialogOpen(true)
+    fetchPilotResultDetails(pilot.pilot_id, standingsCategory)
+  }
+
+  useEffect(() => {
+    if (championship && categories.length > 0) {
+      fetchPilotStandings()
+    }
+  }, [championship, categories])
 
   if (loading) {
     return (
@@ -326,10 +650,12 @@ export default function ChampionshipDetail({ params }: ChampionshipDetailProps) 
               <span className="font-medium">{championship.name}</span>
             </div>
             {isOwner && (
-              <EditChampionshipModal
-                championship={championship}
-                onSuccess={handleChampionshipUpdated}
-              />
+              <div className="flex items-center gap-2">
+                <EditChampionshipModal
+                  championship={championship}
+                  onSuccess={handleChampionshipUpdated}
+                />
+              </div>
             )}
           </div>
         </div>
@@ -338,10 +664,11 @@ export default function ChampionshipDetail({ params }: ChampionshipDetailProps) 
       <main className="container mx-auto px-4 py-6 md:py-8 space-y-8">
         {/* Tabs Section */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-3 md:w-auto md:inline-flex">
+          <TabsList className="grid w-full grid-cols-4 md:w-auto md:inline-flex">
             <TabsTrigger value="overview">Visão Geral</TabsTrigger>
             <TabsTrigger value="categories">Categorias</TabsTrigger>
             <TabsTrigger value="races">Etapas</TabsTrigger>
+            <TabsTrigger value="standings">Classificação</TabsTrigger>
           </TabsList>
           
           {/* Overview Tab */}
@@ -386,6 +713,35 @@ export default function ChampionshipDetail({ params }: ChampionshipDetailProps) 
                     {championship.status === 'completed' && 'Finalizado'}
                   </p>
                 </div>
+                <div>
+                  <Label className="text-xs">Sistema de Pontuação</Label>
+                  <div className="flex justify-between items-center">
+                    <p className="text-sm">
+                      {scoringSystem ? scoringSystem.name : "Não definido"}
+                    </p>
+                    {isOwner && (
+                      <ScoringSystemModal
+                        championship={championship}
+                        onSuccess={handleChampionshipUpdated}
+                      />
+                    )}
+                  </div>
+                  {scoringSystem && (
+                    <div className="mt-2 grid grid-cols-4 gap-2">
+                      {Object.entries(scoringSystem.points)
+                        .sort((a, b) => parseInt(a[0]) - parseInt(b[0]))
+                        .slice(0, 8)
+                        .map(([position, points]) => (
+                          <div key={position} className="text-xs text-muted-foreground">
+                            P{position}: <span className="font-medium">{points}</span>
+                          </div>
+                        ))}
+                      {Object.keys(scoringSystem.points).length > 8 && (
+                        <div className="text-xs text-muted-foreground">...</div>
+                      )}
+                    </div>
+                  )}
+                </div>
               </CardContent>
             </Card>
 
@@ -406,7 +762,7 @@ export default function ChampionshipDetail({ params }: ChampionshipDetailProps) 
                   </div>
                   <div className="space-y-1">
                     <p className="text-xs text-muted-foreground">Corridas</p>
-                    <p className="text-2xl font-semibold">0</p>
+                    <p className="text-2xl font-semibold">{races.length}</p>
                   </div>
                 </div>
               </CardContent>
@@ -478,8 +834,7 @@ export default function ChampionshipDetail({ params }: ChampionshipDetailProps) 
                         className="gap-1.5 w-full"
                         onClick={() => router.push(`/league/${leagueId}/championships/${championshipId}/categories/${category.id}`)}
                       >
-                        <Tag className="h-3.5 w-3.5" />
-                        Detalhes
+                        Editar
                       </Button>
                     </CardFooter>
                   </Card>
@@ -493,9 +848,9 @@ export default function ChampionshipDetail({ params }: ChampionshipDetailProps) 
             <div className="flex items-center justify-between">
               <h2 className="text-xl font-semibold">Etapas</h2>
               {isOwner && (
-                <CreateRaceModal 
-                  championshipId={championshipId} 
-                  onSuccess={handleRaceCreated} 
+                <CreateRaceModal
+                  championshipId={championshipId}
+                  onSuccess={handleRaceCreated}
                 />
               )}
             </div>
@@ -503,98 +858,55 @@ export default function ChampionshipDetail({ params }: ChampionshipDetailProps) 
             {races.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-12 text-center">
                 <div className="bg-muted/50 p-4 rounded-full mb-4">
-                  <Calendar className="h-8 w-8 text-muted-foreground/70" />
+                  <Tag className="h-8 w-8 text-muted-foreground/70" />
                 </div>
                 <h3 className="text-lg font-medium mb-2">Nenhuma etapa encontrada</h3>
                 <p className="text-muted-foreground text-sm max-w-md mb-6">
-                  Adicione etapas para organizar as corridas do campeonato.
+                  Crie etapas para organizar as corridas do campeonato.
                 </p>
                 {isOwner && (
-                  <CreateRaceModal 
-                    championshipId={championshipId} 
-                    onSuccess={handleRaceCreated} 
+                  <CreateRaceModal
+                    championshipId={championshipId}
+                    onSuccess={handleRaceCreated}
                   />
                 )}
               </div>
             ) : (
-              <div className="space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
                 {races.map((race) => (
-                  <Card key={race.id}>
-                    <CardHeader className="pb-2">
+                  <Card key={race.id} className="border border-border/40 shadow-none hover:shadow-sm transition-all">
+                    <CardHeader className="pb-3">
                       <div className="flex justify-between">
-                        <div>
-                          <CardTitle className="text-lg flex items-center gap-2">
-                            {race.name}
-                            {race.status === 'completed' && <CheckCircle className="h-4 w-4 text-green-500" />}
-                            {race.status === 'cancelled' && <XIcon className="h-4 w-4 text-red-500" />}
-                          </CardTitle>
-                          <CardDescription>
-                            {race.status === 'scheduled' && 'Agendada'}
-                            {race.status === 'completed' && 'Concluída'}
-                            {race.status === 'cancelled' && 'Cancelada'}
-                          </CardDescription>
-                        </div>
-                        {isOwner && (
-                          <div className="flex gap-2">
-                            <EditRaceModal
-                              race={race}
-                              onSuccess={handleRaceUpdated}
-                            />
-                            <Button 
-                              variant="outline" 
-                              size="icon" 
-                              className="h-8 w-8 text-destructive" 
-                              onClick={() => handleDeleteRace(race.id)}
-                            >
-                              <Trash2 className="h-3.5 w-3.5" />
-                            </Button>
-                          </div>
-                        )}
+                        <CardTitle className="text-base">{race.name}</CardTitle>
                       </div>
                     </CardHeader>
-                    <CardContent>
-                      {race.description && (
-                        <p className="text-sm text-muted-foreground mb-4">{race.description}</p>
-                      )}
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        {race.date && (
-                          <div className="flex items-center gap-2">
-                            <Calendar className="h-4 w-4 text-muted-foreground" />
-                            <span className="text-sm">
-                              {new Date(race.date).toLocaleDateString('pt-BR', {
-                                weekday: 'long',
-                                day: 'numeric',
-                                month: 'long',
-                                year: 'numeric',
-                                hour: '2-digit',
-                                minute: '2-digit'
-                              })}
-                            </span>
-                          </div>
-                        )}
-                        {race.location && (
-                          <div className="flex items-center gap-2">
-                            <MapPin className="h-4 w-4 text-muted-foreground" />
-                            <span className="text-sm">{race.location}</span>
-                          </div>
-                        )}
-                        {race.track_layout && (
-                          <div className="flex items-center gap-2">
-                            <Route className="h-4 w-4 text-muted-foreground" />
-                            <span className="text-sm">{race.track_layout}</span>
-                          </div>
-                        )}
+                    <CardContent className="pb-3">
+                      <p className="text-sm text-muted-foreground line-clamp-2">
+                        {race.description || "Sem descrição"}
+                      </p>
+                      <div className="mt-3 flex flex-col gap-1.5">
+                        <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                          <MapPin className="h-3.5 w-3.5" />
+                          <span>
+                            {race.location || "Localização não definida"}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                          <Route className="h-3.5 w-3.5" />
+                          <span>
+                            {race.track_layout || "Layout de pista não definido"}
+                          </span>
+                        </div>
                       </div>
                     </CardContent>
-                    <CardFooter>
+                    <CardFooter className="pt-2">
                       <Button 
                         variant="outline" 
                         size="sm" 
-                        className="gap-1.5"
+                        className="gap-1.5 w-full"
                         onClick={() => router.push(`/league/${leagueId}/championships/${championshipId}/races/${race.id}`)}
                       >
-                        <Flag className="h-3.5 w-3.5" />
-                        Ver Resultados
+                        Editar
                       </Button>
                     </CardFooter>
                   </Card>
@@ -602,8 +914,263 @@ export default function ChampionshipDetail({ params }: ChampionshipDetailProps) 
               </div>
             )}
           </TabsContent>
+          
+          {/* Standings Tab */}
+          <TabsContent value="standings" className="space-y-6">
+            <div className="flex items-center justify-between">
+              <h2 className="text-xl font-semibold">Classificação Geral</h2>
+              {championship && (
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={fetchPilotStandings}
+                  disabled={loadingStandings}
+                >
+                  {loadingStandings ? (
+                    <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Atualizando...</>
+                  ) : (
+                    <>Atualizar Classificação</>
+                  )}
+                </Button>
+              )}
+            </div>
+            
+            {categories.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-12 text-center">
+                <div className="bg-muted/50 p-4 rounded-full mb-4">
+                  <Medal className="h-8 w-8 text-muted-foreground/70" />
+                </div>
+                <h3 className="text-lg font-medium mb-2">Nenhuma categoria encontrada</h3>
+                <p className="text-muted-foreground text-sm max-w-md mb-6">
+                  Crie categorias primeiro para visualizar a classificação.
+                </p>
+                {isOwner && (
+                  <CreateCategoryModal 
+                    championshipId={championshipId} 
+                    onSuccess={handleCategoryCreated} 
+                  />
+                )}
+              </div>
+            ) : (
+              <>
+                {/* Seletor de Categoria */}
+                <div className="space-y-2">
+                  <Label htmlFor="category-select">Categoria</Label>
+                  <Select 
+                    value={standingsCategory || ""} 
+                    onValueChange={(value: string) => setStandingsCategory(value)}
+                  >
+                    <SelectTrigger id="category-select">
+                      <SelectValue placeholder="Selecione uma categoria" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {categories.map((category) => (
+                        <SelectItem key={category.id} value={category.id}>
+                          {category.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {loadingStandings ? (
+                  <div className="flex justify-center py-12">
+                    <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                  </div>
+                ) : (
+                  <>
+                    {standingsCategory && pilotStandings[standingsCategory]?.length > 0 ? (
+                      <div className="rounded-md border overflow-hidden">
+                        <div className="overflow-x-auto">
+                          <table className="w-full divide-y">
+                            <thead className="bg-muted">
+                              <tr>
+                                <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider w-20">
+                                  Pos.
+                                </th>
+                                <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                                  Piloto
+                                </th>
+                                <th className="px-4 py-3 text-center text-xs font-medium text-muted-foreground uppercase tracking-wider w-24">
+                                  Pontos
+                                </th>
+                                <th className="px-4 py-3 text-center text-xs font-medium text-muted-foreground uppercase tracking-wider w-24 hidden md:table-cell">
+                                  V. Rápidas
+                                </th>
+                                <th className="px-4 py-3 text-center text-xs font-medium text-muted-foreground uppercase tracking-wider w-24 hidden md:table-cell">
+                                  DNF/DSQ
+                                </th>
+                              </tr>
+                            </thead>
+                            <tbody className="bg-white divide-y">
+                              {pilotStandings[standingsCategory].map((standing) => (
+                                <tr 
+                                  key={standing.pilot_id} 
+                                  className="hover:bg-muted/40 transition-colors cursor-pointer" 
+                                  onClick={() => handleShowPilotDetails(standing)}
+                                >
+                                  <td className="px-4 py-3 whitespace-nowrap text-sm">
+                                    <div className="flex items-center gap-1">
+                                      <span className="font-semibold">{standing.position}</span>
+                                      <span className="text-xs text-muted-foreground ml-1">
+                                        {standing.position !== undefined && 
+                                         standing.previous_position !== undefined && 
+                                         standing.position !== standing.previous_position && (
+                                          standing.position < standing.previous_position ? (
+                                            <ArrowUp className="h-3.5 w-3.5 text-green-500" />
+                                          ) : standing.position > standing.previous_position ? (
+                                            <ArrowDown className="h-3.5 w-3.5 text-red-500" />
+                                          ) : (
+                                            <Minus className="h-3.5 w-3.5 text-muted-foreground" />
+                                          )
+                                        )}
+                                      </span>
+                                    </div>
+                                  </td>
+                                  <td className="px-4 py-3 whitespace-nowrap">
+                                    <div className="flex items-center">
+                                      <Avatar className="h-7 w-7 mr-2 hidden sm:inline-flex">
+                                        <AvatarImage src={standing.pilot_avatar || undefined} />
+                                        <AvatarFallback className="text-xs">
+                                          {standing.pilot_name.charAt(0)}
+                                        </AvatarFallback>
+                                      </Avatar>
+                                      <span className="text-sm font-medium">{standing.pilot_name}</span>
+                                    </div>
+                                  </td>
+                                  <td className="px-4 py-3 whitespace-nowrap text-sm text-center font-semibold">
+                                    {standing.total_points}
+                                  </td>
+                                  <td className="px-4 py-3 whitespace-nowrap text-sm text-center hidden md:table-cell">
+                                    {standing.fastest_laps}
+                                  </td>
+                                  <td className="px-4 py-3 whitespace-nowrap text-sm text-center hidden md:table-cell">
+                                    {standing.dnfs + standing.dqs}
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="flex flex-col items-center justify-center py-12 text-center">
+                        <div className="bg-muted/50 p-4 rounded-full mb-4">
+                          <Trophy className="h-8 w-8 text-muted-foreground/70" />
+                        </div>
+                        <h3 className="text-lg font-medium mb-2">Nenhum resultado disponível</h3>
+                        <p className="text-muted-foreground text-sm max-w-md">
+                          Adicione pilotos às categorias e registre resultados das etapas para visualizar a classificação.
+                        </p>
+                      </div>
+                    )}
+                  </>
+                )}
+              </>
+            )}
+          </TabsContent>
         </Tabs>
       </main>
+
+      {/* Pilot Details Dialog */}
+      <Dialog open={isDetailDialogOpen} onOpenChange={setIsDetailDialogOpen}>
+        <DialogContent className="sm:max-w-[600px]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Avatar className="h-8 w-8">
+                <AvatarImage src={selectedPilot?.pilot_avatar || undefined} />
+                <AvatarFallback>
+                  {selectedPilot?.pilot_name.charAt(0)}
+                </AvatarFallback>
+              </Avatar>
+              {selectedPilot?.pilot_name}
+            </DialogTitle>
+          </DialogHeader>
+          
+          {loadingPilotResults ? (
+            <div className="flex justify-center py-8">
+              <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            </div>
+          ) : (
+            <div className="py-4">
+              <div className="flex justify-between items-center mb-4">
+                <div>
+                  <span className="text-xs text-muted-foreground">Posição</span>
+                  <p className="text-xl font-bold">{selectedPilot?.position || '-'}</p>
+                </div>
+                <div>
+                  <span className="text-xs text-muted-foreground">Total de Pontos</span>
+                  <p className="text-xl font-bold text-right">{selectedPilot?.total_points || '0'}</p>
+                </div>
+              </div>
+              
+              <div className="rounded-md border overflow-hidden">
+                <table className="w-full divide-y">
+                  <thead className="bg-muted">
+                    <tr>
+                      <th className="px-4 py-2 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                        Etapa
+                      </th>
+                      <th className="px-4 py-2 text-center text-xs font-medium text-muted-foreground uppercase tracking-wider w-24">
+                        Pos.
+                      </th>
+                      <th className="px-4 py-2 text-center text-xs font-medium text-muted-foreground uppercase tracking-wider w-24">
+                        Pts.
+                      </th>
+                      <th className="px-4 py-2 text-center text-xs font-medium text-muted-foreground uppercase tracking-wider w-28 hidden sm:table-cell">
+                        Status
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y">
+                    {Object.values(selectedPilotResults)
+                      .sort((a, b) => new Date(a.race_date || 0).getTime() - new Date(b.race_date || 0).getTime())
+                      .map((result) => (
+                        <tr key={result.race_id} className="hover:bg-muted/40 transition-colors">
+                          <td className="px-4 py-2 whitespace-nowrap text-sm">
+                            {result.race_name}
+                          </td>
+                          <td className="px-4 py-2 whitespace-nowrap text-sm text-center">
+                            {result.position !== null ? result.position : result.dq ? 'DSQ' : result.dnf ? 'DNF' : '-'}
+                          </td>
+                          <td className="px-4 py-2 whitespace-nowrap text-sm text-center font-medium">
+                            {result.points}
+                          </td>
+                          <td className="px-4 py-2 whitespace-nowrap text-xs text-center hidden sm:table-cell">
+                            <div className="flex justify-center items-center gap-1">
+                              {result.fastest_lap && (
+                                <span className="inline-flex items-center rounded-full bg-purple-50 px-1.5 py-0.5 text-xs font-medium text-purple-700 ring-1 ring-inset ring-purple-600/20">VR</span>
+                              )}
+                              {result.dnf && (
+                                <span className="inline-flex items-center rounded-full bg-amber-50 px-1.5 py-0.5 text-xs font-medium text-amber-700 ring-1 ring-inset ring-amber-600/20">DNF</span>
+                              )}
+                              {result.dq && (
+                                <span className="inline-flex items-center rounded-full bg-red-50 px-1.5 py-0.5 text-xs font-medium text-red-700 ring-1 ring-inset ring-red-600/20">DSQ</span>
+                              )}
+                              {!result.fastest_lap && !result.dnf && !result.dq && result.position === null && (
+                                <span className="inline-flex items-center rounded-full bg-gray-50 px-1.5 py-0.5 text-xs font-medium text-gray-700 ring-1 ring-inset ring-gray-600/20">-</span>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                  </tbody>
+                </table>
+              </div>
+              
+              <div className="text-xs text-muted-foreground mt-4">
+                <span className="inline-flex items-center rounded-full bg-purple-50 px-1.5 py-0.5 text-xs font-medium text-purple-700 ring-1 ring-inset ring-purple-600/20 mr-1">VR</span> Volta mais rápida
+                <span className="inline-flex items-center rounded-full bg-amber-50 px-1.5 py-0.5 text-xs font-medium text-amber-700 ring-1 ring-inset ring-amber-600/20 mr-1 ml-2">DNF</span> Não completou
+                <span className="inline-flex items-center rounded-full bg-red-50 px-1.5 py-0.5 text-xs font-medium text-red-700 ring-1 ring-inset ring-red-600/20 ml-2">DSQ</span> Desqualificado
+              </div>
+            </div>
+          )}
+          
+          <DialogFooter>
+            <Button onClick={() => setIsDetailDialogOpen(false)}>Fechar</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

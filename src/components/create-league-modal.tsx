@@ -149,7 +149,7 @@ export function CreateLeagueModal({ onSuccess, isOpenExternal, onOpenChange }: C
 
   return (
     <Dialog open={isOpen} onOpenChange={handleOpenChange}>
-      {!isOpenExternal && (
+      {isOpenExternal === undefined && (
         <DialogTrigger asChild>
           <Button size="sm" className="gap-1.5">
             <Plus className="h-3.5 w-3.5" />

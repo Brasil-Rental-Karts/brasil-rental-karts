@@ -16,6 +16,7 @@ interface League {
   name: string
   description: string
   created_at: string
+  logo_url: string | null
 }
 
 interface PilotProfile {
@@ -41,12 +42,16 @@ export default function PilotPage() {
       const { data: { session }, error: sessionError } = await supabase.auth.getSession()
       
       if (sessionError) {
-        logger.error('Auth', `Sessão inválida`, { mensagem: sessionError.message });
+        logger.error('Auth', `Sessão inválida`, { 
+          mensagem: sessionError.message,
+          codigo: sessionError.code
+        });
         router.push("/login")
         return
       }
       
       if (!session?.user) {
+        logger.error('Auth', `Usuário não autenticado`);
         router.push("/login")
         return
       }
@@ -64,7 +69,9 @@ export default function PilotPage() {
           codigo: pilotError.code,
           mensagem: pilotError.message,
           detalhes: pilotError.details,
-          dica: pilotError.hint
+          dica: pilotError.hint,
+          metadata: session.user.user_metadata,
+          email: session.user.email
         });
         
         // If the error is not "no rows returned", throw it
@@ -75,17 +82,18 @@ export default function PilotPage() {
 
       // If no profile exists, create one with default values
       if (!pilotData) {
+        const defaultName = session.user.user_metadata?.name || 
+                          (session.user.email ? session.user.email.split('@')[0] : "Piloto");
+
         const { data: newPilot, error: createError } = await supabase
           .from("pilot_profiles")
           .insert({
             id: session.user.id,
-            name: session.user.user_metadata?.name || "",
+            name: defaultName,
             email: session.user.email || "",
             phone: "",
             bio: "",
             avatar_url: session.user.user_metadata?.avatar_url || null,
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString(),
           })
           .select()
           .single()
@@ -96,7 +104,13 @@ export default function PilotPage() {
             codigo: createError.code,
             mensagem: createError.message,
             detalhes: createError.details,
-            dica: createError.hint
+            dica: createError.hint,
+            dadosTentativa: {
+              id: session.user.id,
+              name: defaultName,
+              email: session.user.email,
+              metadata: session.user.user_metadata
+            }
           });
           throw createError
         }
@@ -172,28 +186,10 @@ export default function PilotPage() {
 
       <main className="container mx-auto px-4 py-6 md:py-8 space-y-8">
         {/* Welcome Section */}
-        <section className="bg-gradient-to-r from-primary/5 to-primary/10 rounded-lg p-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+        <section className="bg-gradient-to-r from-primary/5 to-primary/10 rounded-lg p-6">
           <div>
             <h1 className="text-2xl font-bold mb-1">Olá, {pilot.name.split(' ')[0]}</h1>
             <p className="text-muted-foreground text-sm">Bem-vindo ao painel de controle das suas ligas de kart</p>
-          </div>
-          <div className="flex flex-col sm:flex-row gap-2">
-            {leagues.length === 0 && (
-              <Button 
-                variant="default" 
-                size="sm" 
-                className="gap-1.5"
-                onClick={() => setIsCreateLeagueOpen(true)}
-              >
-                <Plus className="h-3.5 w-3.5" />
-                Criar primeira liga
-              </Button>
-            )}
-            <CreateLeagueModal 
-              onSuccess={fetchData} 
-              isOpenExternal={isCreateLeagueOpen} 
-              onOpenChange={setIsCreateLeagueOpen} 
-            />
           </div>
         </section>
 
@@ -296,11 +292,14 @@ export default function PilotPage() {
                   <CardContent className="p-4">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-3">
-                        <div className="flex-shrink-0 w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
-                          <span className="text-primary font-semibold">
-                            {league.name.charAt(0)}
-                          </span>
-                        </div>
+                        <Avatar className="h-10 w-10">
+                          <AvatarImage src={league.logo_url || undefined} alt={league.name} />
+                          <AvatarFallback className="bg-primary/10">
+                            <span className="text-primary font-semibold">
+                              {league.name.charAt(0)}
+                            </span>
+                          </AvatarFallback>
+                        </Avatar>
                         <div>
                           <h3 className="font-medium group-hover:text-primary transition-colors">{league.name}</h3>
                           <p className="text-xs text-muted-foreground line-clamp-1">{league.description || "Sem descrição"}</p>
@@ -315,6 +314,12 @@ export default function PilotPage() {
           )}
         </section>
       </main>
+
+      <CreateLeagueModal 
+        isOpenExternal={isCreateLeagueOpen}
+        onOpenChange={(open) => setIsCreateLeagueOpen(open)}
+        onSuccess={fetchData}
+      />
     </div>
   )
 } 

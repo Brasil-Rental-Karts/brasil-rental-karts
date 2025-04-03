@@ -10,6 +10,7 @@ import Link from "next/link"
 import { Loader2 } from "lucide-react"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { EditLeagueModal } from "@/components/edit-league-modal"
+import { LeagueCalendar } from "@/components/league-calendar"
 
 interface League {
   id: string
@@ -203,6 +204,11 @@ export default function LeagueDashboard({ params }: LeagueDashboardProps) {
               </CardContent>
             </Card>
           </div>
+        </section>
+
+        {/* Calendar Section */}
+        <section>
+          <LeagueCalendar leagueId={id} />
         </section>
 
         {/* Quick Actions Section */}

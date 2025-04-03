@@ -65,7 +65,15 @@ interface League {
 interface Championship {
   id: string
   name: string
+  description: string
   league_id: string
+  start_date: string | null
+  end_date: string | null
+  status: 'upcoming' | 'active' | 'completed'
+  logo_url: string | null
+  scoring_system_id: string
+  created_at: string
+  updated_at: string
 }
 
 interface Pilot {

@@ -29,6 +29,7 @@ interface Championship {
   end_date: string | null
   status: 'upcoming' | 'active' | 'completed'
   logo_url: string | null
+  scoring_system_id: string
   created_at: string
   updated_at: string
 }
@@ -124,20 +125,25 @@ export function EditChampionshipModal({ championship, onSuccess }: EditChampions
       
       const userId = session.user.id
       const fileExt = logoFile.name.split('.').pop()
-      const fileName = `${userId}/${uuidv4()}.${fileExt}`
-      const filePath = `${fileName}`
+      const fileName = `${userId}/${Date.now()}-${uuidv4()}.${fileExt}`
       
       // Upload do arquivo para o bucket championship-logos
-      const { error: uploadError, data } = await supabase.storage
+      const { error: uploadError } = await supabase.storage
         .from('championship-logos')
-        .upload(filePath, logoFile)
+        .upload(fileName, logoFile, {
+          cacheControl: '3600',
+          upsert: true
+        })
       
-      if (uploadError) throw uploadError
+      if (uploadError) {
+        console.error("Erro ao fazer upload da logo:", uploadError)
+        throw uploadError
+      }
       
       // Obter URL pública do arquivo
       const { data: { publicUrl } } = supabase.storage
         .from('championship-logos')
-        .getPublicUrl(filePath)
+        .getPublicUrl(fileName)
       
       return publicUrl
     } catch (error) {
@@ -203,13 +209,8 @@ export function EditChampionshipModal({ championship, onSuccess }: EditChampions
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button
-          variant="outline"
-          size="sm"
-          className="gap-1.5"
-        >
-          <Edit className="h-3.5 w-3.5" />
-          Editar
+        <Button variant="ghost" size="icon">
+          <Edit className="h-4 w-4" />
         </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-[425px]">
@@ -224,7 +225,7 @@ export function EditChampionshipModal({ championship, onSuccess }: EditChampions
               <Avatar className="h-16 w-16 ring-2 ring-primary/10 ring-offset-2">
                 {logoPreview ? (
                   <AvatarImage src={logoPreview} alt="Preview" />
-                ) : logoUrl && !removeLogo ? (
+                ) : logoUrl ? (
                   <AvatarImage src={logoUrl} alt={name} />
                 ) : (
                   <AvatarFallback className="bg-primary/5">
@@ -233,39 +234,38 @@ export function EditChampionshipModal({ championship, onSuccess }: EditChampions
                 )}
               </Avatar>
               <div className="flex-1">
-                <div className="flex gap-2">
-                  <Label htmlFor="logo-upload-edit" className="cursor-pointer flex-1">
-                    <div className="flex items-center justify-center gap-2 p-2 border rounded hover:bg-muted transition-colors">
-                      <Upload className="h-4 w-4" />
-                      <span className="text-sm">Escolher imagem</span>
-                    </div>
-                    <Input
-                      id="logo-upload-edit"
-                      type="file"
-                      accept="image/*"
-                      className="hidden"
-                      onChange={handleLogoChange}
-                    />
-                  </Label>
-                  {(logoPreview || (logoUrl && !removeLogo)) && (
-                    <Button 
-                      type="button" 
-                      variant="outline" 
-                      size="icon" 
-                      className="h-10 w-10" 
-                      onClick={handleRemoveLogo}
-                    >
-                      <X className="h-4 w-4" />
-                    </Button>
-                  )}
-                </div>
+                <Label htmlFor="logo-upload" className="cursor-pointer">
+                  <div className="flex items-center gap-2 p-2 border rounded hover:bg-muted transition-colors">
+                    <Upload className="h-4 w-4" />
+                    <span className="text-sm">Escolher imagem</span>
+                  </div>
+                  <Input
+                    id="logo-upload"
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={handleLogoChange}
+                  />
+                </Label>
+                {logoUrl && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="mt-1 text-destructive hover:text-destructive"
+                    onClick={handleRemoveLogo}
+                  >
+                    <X className="h-4 w-4 mr-1" />
+                    Remover logo
+                  </Button>
+                )}
                 <p className="text-xs text-muted-foreground mt-1">
                   Recomendado: 512x512px, máx. 2MB
                 </p>
               </div>
             </div>
           </div>
-          
+
           <div className="space-y-2">
             <Label htmlFor="name">Nome do Campeonato</Label>
             <Input
@@ -337,7 +337,7 @@ export function EditChampionshipModal({ championship, onSuccess }: EditChampions
                   {uploadingLogo ? "Fazendo upload..." : "Salvando..."}
                 </>
               ) : (
-                <>Salvar alterações</>
+                <>Salvar Alterações</>
               )}
             </Button>
           </div>
