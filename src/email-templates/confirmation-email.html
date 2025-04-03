@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Confirmação de Conta - Brasil Rental Karts</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            line-height: 1.6;
+            color: #1a1a1a;
+            margin: 0;
+            padding: 0;
+            background-color: #f5f5f5;
+        }
+        .container {
+            max-width: 600px;
+            margin: 40px auto;
+            padding: 0;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+        }
+        .header {
+            background: linear-gradient(135deg, hsl(24, 100%, 50%) 0%, hsl(24, 80%, 45%) 100%);
+            padding: 30px 20px;
+            text-align: center;
+        }
+        .logo-container {
+            margin-bottom: 10px;
+        }
+        .logo {
+            width: 120px;
+            height: auto;
+        }
+        .header h1 {
+            color: white;
+            margin: 0;
+            font-size: 28px;
+            font-weight: 700;
+        }
+        .content {
+            background: white;
+            padding: 40px 30px;
+        }
+        .welcome-text {
+            font-size: 24px;
+            font-weight: 600;
+            color: #1a1a1a;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        .message {
+            color: #4b5563;
+            margin-bottom: 30px;
+            text-align: center;
+        }
+        .button-container {
+            text-align: center;
+            margin: 40px 0;
+        }
+        .button {
+            display: inline-block;
+            background: hsl(24, 100%, 50%);
+            color: white;
+            padding: 16px 32px;
+            text-decoration: none;
+            border-radius: 8px;
+            font-weight: 600;
+            text-align: center;
+            transition: all 0.2s ease;
+            box-shadow: 0 4px 6px rgba(234, 88, 12, 0.25);
+        }
+        .button:hover {
+            background: hsl(24, 90%, 45%);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 12px rgba(234, 88, 12, 0.3);
+        }
+        .footer {
+            text-align: center;
+            padding: 30px 20px;
+            background-color: #1a1a1a;
+            color: rgba(255, 255, 255, 0.7);
+            font-size: 14px;
+        }
+        .divider {
+            height: 1px;
+            background-color: #e5e7eb;
+            margin: 30px 0;
+        }
+        .social-links {
+            text-align: center;
+            margin-top: 20px;
+        }
+        .social-link {
+            display: inline-block;
+            margin: 0 10px;
+            color: rgba(255, 255, 255, 0.7);
+            text-decoration: none;
+            font-size: 14px;
+        }
+        .social-link:hover {
+            color: hsl(24, 100%, 50%);
+        }
+        @media (max-width: 600px) {
+            .container {
+                margin: 0;
+                border-radius: 0;
+            }
+            .content {
+                padding: 30px 20px;
+            }
+            .welcome-text {
+                font-size: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="logo-container">
+                <img src="https://brasilrentalkarts.com.br/brk_logo.svg" alt="Brasil Rental Karts" class="logo">
+            </div>
+            <h1>Brasil Rental Karts</h1>
+        </div>
+        
+        <div class="content">
+            <div class="welcome-text">
+                Bem-vindo ao Brasil Rental Karts!
+            </div>
+            
+            <div class="message">
+                <p>Olá! Estamos felizes em ter você conosco.</p>
+                <p>Para começar a usar sua conta e aproveitar todos os recursos da nossa plataforma, confirme seu endereço de e-mail clicando no botão abaixo:</p>
+            </div>
+            
+            <div class="button-container">
+                <a href="{{ .ConfirmationURL }}" class="button">
+                    Confirmar minha conta
+                </a>
+            </div>
+            
+            <div class="message">
+                <p>Se você não criou uma conta no Brasil Rental Karts, pode ignorar este e-mail com segurança.</p>
+            </div>
+            
+            <div class="divider"></div>
+            
+            <div class="message" style="font-size: 14px; color: #6b7280;">
+                <p>A plataforma definitiva para ligas de kart rental no Brasil.</p>
+            </div>
+        </div>
+        
+        <div class="footer">
+            <p>© 2024 Brasil Rental Karts. Todos os direitos reservados.</p>
+            <p>Este é um e-mail automático, por favor não responda.</p>
+            
+            <div class="social-links">
+                <a href="https://instagram.com/brasilrentalkarts" class="social-link">Instagram</a>
+                <a href="https://youtube.com/brasilrentalkarts" class="social-link">YouTube</a>
+            </div>
+        </div>
+    </div>
+</body>
+</html> 
