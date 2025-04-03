@@ -102,6 +102,39 @@ CREATE TRIGGER update_leagues_updated_at
     FOR EACH ROW
     EXECUTE FUNCTION update_updated_at_column();
 
+-- Criar tabela de sistemas de pontuação
+CREATE TABLE IF NOT EXISTS scoring_systems (
+    id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    description TEXT,
+    is_default BOOLEAN DEFAULT false,
+    points JSONB NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+-- Habilitar RLS na tabela scoring_systems
+ALTER TABLE scoring_systems ENABLE ROW LEVEL SECURITY;
+
+-- Criar políticas RLS para scoring_systems
+CREATE POLICY "Anyone can view scoring systems"
+    ON scoring_systems FOR SELECT
+    USING (true);
+
+CREATE POLICY "League owners can manage scoring systems"
+    ON scoring_systems FOR ALL
+    USING (
+        auth.uid() IN (
+            SELECT owner_id FROM leagues
+        )
+    );
+
+-- Trigger para atualizar o campo updated_at
+CREATE TRIGGER update_scoring_systems_updated_at
+    BEFORE UPDATE ON scoring_systems
+    FOR EACH ROW
+    EXECUTE FUNCTION update_updated_at_column();
+
 -- Criar tabela de campeonatos
 CREATE TABLE IF NOT EXISTS championships (
     id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
@@ -294,123 +327,31 @@ CREATE TRIGGER set_updated_at_races
     EXECUTE FUNCTION update_updated_at_column();
 
 -- Criar tabela de resultados
-CREATE TABLE IF NOT EXISTS race_results (
-    id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
-    race_id UUID NOT NULL REFERENCES races(id) ON DELETE CASCADE,
-    pilot_id UUID NOT NULL REFERENCES pilot_profiles(id) ON DELETE CASCADE,
-    category_id UUID NOT NULL REFERENCES categories(id) ON DELETE CASCADE,
-    position INTEGER,
-    qualification_position INTEGER,
-    fastest_lap BOOLEAN DEFAULT false,
-    dnf BOOLEAN DEFAULT false,
-    dq BOOLEAN DEFAULT false,
-    notes TEXT,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
-    UNIQUE(race_id, pilot_id)
+CREATE TABLE race_results (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  race_id UUID NOT NULL REFERENCES races(id) ON DELETE CASCADE,
+  pilot_id UUID NOT NULL REFERENCES pilot_profiles(id) ON DELETE CASCADE,
+  category_id UUID NOT NULL REFERENCES categories(id) ON DELETE CASCADE,
+  position INTEGER,
+  qualification_position INTEGER,
+  fastest_lap BOOLEAN NOT NULL DEFAULT false,
+  dnf BOOLEAN NOT NULL DEFAULT false,
+  dq BOOLEAN NOT NULL DEFAULT false,
+  notes TEXT,
+  heat_number INTEGER NOT NULL DEFAULT 1,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  
+  -- Nova restrição de unicidade incluindo heat_number
+  CONSTRAINT race_results_race_pilot_category_heat_unique 
+  UNIQUE (race_id, pilot_id, category_id, heat_number)
 );
 
--- Habilitar RLS na tabela race_results
-ALTER TABLE race_results ENABLE ROW LEVEL SECURITY;
-
--- Criar políticas RLS para race_results
-CREATE POLICY "Anyone can read race results"
-    ON race_results FOR SELECT
-    USING (true);
-
-CREATE POLICY "League owners and admins can manage race results"
-    ON race_results FOR ALL
-    USING (
-        EXISTS (
-            SELECT 1 FROM races r
-            JOIN championships c ON r.championship_id = c.id
-            JOIN leagues l ON c.league_id = l.id
-            LEFT JOIN league_admins la ON la.league_id = l.id
-            WHERE r.id = race_id
-            AND (l.owner_id = auth.uid() OR la.user_id = auth.uid())
-        )
-    );
-
--- Criar trigger para atualizar updated_at em race_results
-CREATE TRIGGER set_updated_at_race_results
-    BEFORE UPDATE ON race_results
-    FOR EACH ROW
-    EXECUTE FUNCTION update_updated_at_column();
-
--- Criar tabela de sistemas de pontuação
-CREATE TABLE IF NOT EXISTS scoring_systems (
-    id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
-    name VARCHAR(255) NOT NULL,
-    description TEXT,
-    is_default BOOLEAN DEFAULT false,
-    points JSONB NOT NULL,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
-);
-
--- Habilitar RLS na tabela scoring_systems
-ALTER TABLE scoring_systems ENABLE ROW LEVEL SECURITY;
-
--- Criar políticas RLS para scoring_systems
-CREATE POLICY "Anyone can view scoring systems"
-    ON scoring_systems FOR SELECT
-    USING (true);
-
-CREATE POLICY "League owners can manage scoring systems"
-    ON scoring_systems FOR ALL
-    USING (
-        auth.uid() IN (
-            SELECT owner_id FROM leagues
-        )
-    );
-
--- Inserir sistemas de pontuação padrão
-INSERT INTO scoring_systems (name, description, is_default, points) VALUES
-    ('F1', 'Sistema de pontuação da Fórmula 1', true, '{
-        "1": 25,
-        "2": 18,
-        "3": 15,
-        "4": 12,
-        "5": 10,
-        "6": 8,
-        "7": 6,
-        "8": 4,
-        "9": 2,
-        "10": 1
-    }'),
-    ('MotoGP', 'Sistema de pontuação do MotoGP', true, '{
-        "1": 25,
-        "2": 20,
-        "3": 16,
-        "4": 13,
-        "5": 11,
-        "6": 10,
-        "7": 9,
-        "8": 8,
-        "9": 7,
-        "10": 6,
-        "11": 5,
-        "12": 4,
-        "13": 3,
-        "14": 2,
-        "15": 1
-    }'),
-    ('Karting Padrão', 'Sistema de pontuação padrão para karting', true, '{
-        "1": 10,
-        "2": 8,
-        "3": 6,
-        "4": 5,
-        "5": 4,
-        "6": 3,
-        "7": 2,
-        "8": 1
-    }');
-
--- Trigger para atualizar o campo updated_at
-CREATE TRIGGER update_scoring_systems_updated_at
-    BEFORE UPDATE ON scoring_systems
-    FOR EACH ROW
-    EXECUTE FUNCTION update_updated_at_column();
+-- Criar índices para melhorar a performance
+CREATE INDEX idx_race_results_race_id ON race_results(race_id);
+CREATE INDEX idx_race_results_pilot_id ON race_results(pilot_id);
+CREATE INDEX idx_race_results_category_id ON race_results(category_id);
+CREATE INDEX idx_race_results_heat_number ON race_results(heat_number);
 
 -- Configurar buckets do storage
 INSERT INTO storage.buckets (id, name, public)

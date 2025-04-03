@@ -222,6 +222,25 @@ export default function CategoryDetail({ params }: CategoryDetailProps) {
 
     try {
       setLoading(true)
+      
+      // Primeiro remover todos os resultados de corrida deste piloto nesta categoria
+      // Isso garante que não haverá resultados órfãos após a remoção do piloto
+      console.log(`Removendo resultados do piloto ${pilotId} da categoria ${categoryId}`);
+      const { error: resultError } = await supabase
+        .from("race_results")
+        .delete()
+        .match({
+          category_id: categoryId,
+          pilot_id: pilotId
+        })
+
+      if (resultError) {
+        console.error("Erro ao remover resultados do piloto:", resultError)
+        toast.error("Erro ao remover resultados do piloto")
+        return
+      }
+
+      // Após remover os resultados, agora removemos o piloto da categoria
       const { error } = await supabase
         .from("category_pilots")
         .delete()

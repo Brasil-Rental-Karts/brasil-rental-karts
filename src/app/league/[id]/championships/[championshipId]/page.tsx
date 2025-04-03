@@ -136,6 +136,8 @@ export default function ChampionshipDetail({ params }: ChampionshipDetailProps) 
   const [championship, setChampionship] = useState<Championship | null>(null)
   const [league, setLeague] = useState<League | null>(null)
   const [isOwner, setIsOwner] = useState(false)
+  const [isPilot, setIsPilot] = useState(false)
+  const [userCategories, setUserCategories] = useState<string[]>([])
   const [categories, setCategories] = useState<CategoryWithPilotCount[]>([])
   const [activeTab, setActiveTab] = useState("overview")
   const [races, setRaces] = useState<Race[]>([])
@@ -185,7 +187,9 @@ export default function ChampionshipDetail({ params }: ChampionshipDetailProps) 
 
         if (leagueError) throw leagueError
         setLeague(leagueData)
-        setIsOwner(session.user.id === leagueData.owner_id)
+        
+        const isUserOwner = session.user.id === leagueData.owner_id;
+        setIsOwner(isUserOwner)
 
         // Fetch championship data
         const { data: championshipData, error: championshipError } = await supabase
@@ -196,6 +200,27 @@ export default function ChampionshipDetail({ params }: ChampionshipDetailProps) 
 
         if (championshipError) throw championshipError
         setChampionship(championshipData)
+
+        // Verificar se o usuário é piloto em alguma categoria do campeonato
+        const { data: pilotCategories, error: pilotCategoriesError } = await supabase
+          .from("category_pilots")
+          .select("category_id, categories!inner(championship_id)")
+          .eq("pilot_id", session.user.id)
+          .eq("categories.championship_id", championshipId)
+
+        if (!pilotCategoriesError && pilotCategories && pilotCategories.length > 0) {
+          setIsPilot(true)
+          // Armazenar as categorias onde o usuário é piloto
+          const categoryIds = pilotCategories.map(pc => pc.category_id)
+          setUserCategories(categoryIds)
+          
+          // Se o usuário só for piloto, definir a categoria selecionada para a primeira categoria do usuário
+          if (!isUserOwner && categoryIds.length > 0) {
+            setStandingsCategory(categoryIds[0])
+            // Se o usuário é apenas piloto, definir a aba ativa para standings
+            setActiveTab("standings")
+          }
+        }
 
         // Fetch scoring system if exists
         if (championshipData.scoring_system_id) {
@@ -450,6 +475,7 @@ export default function ChampionshipDetail({ params }: ChampionshipDetailProps) 
         
         // 5. Para cada corrida, obter os resultados dos pilotos da categoria
         for (const race of racesData) {
+          // Buscar todos os resultados para esta corrida e categoria (incluindo todas as baterias)
           const { data: resultsData, error: resultsError } = await supabase
             .from("race_results")
             .select("*")
@@ -463,35 +489,50 @@ export default function ChampionshipDetail({ params }: ChampionshipDetailProps) 
           
           if (!resultsData || resultsData.length === 0) continue
           
-          // 6. Atualizar os pontos e estatísticas de cada piloto
-          for (const result of resultsData) {
-            const pilotIndex = standingsByCategory[category.id].findIndex(
-              p => p.pilot_id === result.pilot_id
-            )
-            
-            if (pilotIndex === -1) continue
-            
-            // Atualizar a posição do piloto nesta corrida
-            standingsByCategory[category.id][pilotIndex].positions[race.id] = result.position
-            
-            // Atualizar estatísticas
-            if (result.fastest_lap) {
-              standingsByCategory[category.id][pilotIndex].fastest_laps += 1
+          // Agrupar resultados por bateria
+          const heatResults: Record<number, typeof resultsData> = {};
+          resultsData.forEach(result => {
+            const heatNumber = result.heat_number || 1;
+            if (!heatResults[heatNumber]) {
+              heatResults[heatNumber] = [];
             }
-            
-            if (result.dnf) {
-              standingsByCategory[category.id][pilotIndex].dnfs += 1
-            }
-            
-            if (result.dq) {
-              standingsByCategory[category.id][pilotIndex].dqs += 1
-            }
-            
-            // Calcular pontos se tiver posição e não estiver desqualificado
-            if (result.position !== null && !result.dq) {
-              const positionStr = result.position.toString()
-              const points = scoringSystem[positionStr] || 0
-              standingsByCategory[category.id][pilotIndex].total_points += points
+            heatResults[heatNumber].push(result);
+          });
+          
+          // 6. Para cada bateria, atualizar os pontos e estatísticas de cada piloto
+          for (const [heatNumber, heatResultsData] of Object.entries(heatResults)) {
+            for (const result of heatResultsData) {
+              const pilotIndex = standingsByCategory[category.id].findIndex(
+                p => p.pilot_id === result.pilot_id
+              )
+              
+              if (pilotIndex === -1) continue
+              
+              // Definir chave única para posição (combina ID da corrida e número da bateria)
+              const positionKey = `${race.id}_${heatNumber}`;
+              
+              // Atualizar a posição do piloto nesta corrida/bateria
+              standingsByCategory[category.id][pilotIndex].positions[positionKey] = result.position
+              
+              // Atualizar estatísticas
+              if (result.fastest_lap) {
+                standingsByCategory[category.id][pilotIndex].fastest_laps += 1
+              }
+              
+              if (result.dnf) {
+                standingsByCategory[category.id][pilotIndex].dnfs += 1
+              }
+              
+              if (result.dq) {
+                standingsByCategory[category.id][pilotIndex].dqs += 1
+              }
+              
+              // Calcular pontos se tiver posição e não estiver desqualificado
+              if (result.position !== null && !result.dq) {
+                const positionStr = result.position.toString()
+                const points = scoringSystem[positionStr] || 0
+                standingsByCategory[category.id][pilotIndex].total_points += points
+              }
             }
           }
         }
@@ -531,60 +572,76 @@ export default function ChampionshipDetail({ params }: ChampionshipDetailProps) 
       if (racesError) throw racesError
       if (!racesData || racesData.length === 0) return
       
-      // Obter os resultados do piloto em cada corrida
-      const resultsPromises = racesData.map(async (race) => {
+      // Para cada corrida, obter todos os resultados do piloto naquela corrida (todas as baterias)
+      const allResults = [];
+      
+      for (const race of racesData) {
+        // Buscar todos os resultados deste piloto para esta corrida
         const { data, error } = await supabase
           .from("race_results")
           .select("*")
           .eq("race_id", race.id)
           .eq("pilot_id", pilotId)
           .eq("category_id", categoryId)
-          .single()
         
-        // Se não houver resultado para esta corrida, retornar valores padrão
-        if (error || !data) {
-          return {
+        if (error) {
+          console.error("Erro ao buscar resultados do piloto:", error);
+          continue;
+        }
+        
+        // Se não houver resultados, criar um registro vazio para a corrida
+        if (!data || data.length === 0) {
+          allResults.push({
             race_id: race.id,
             race_name: race.name,
             race_date: race.date,
+            heat_number: 1,
+            heat_name: "Bateria única",
             position: null,
             qualification_position: null,
             fastest_lap: false,
             dnf: false,
             dq: false,
             points: 0
+          });
+          continue;
+        }
+        
+        // Para cada resultado/bateria, criar um registro
+        for (const result of data) {
+          // Calcular pontos se tiver posição e não estiver desqualificado
+          let points = 0;
+          if (scoringSystem && result.position !== null && !result.dq) {
+            const positionStr = result.position.toString();
+            points = scoringSystem.points[positionStr] || 0;
           }
+          
+          // Adicionar resultado formatado ao array
+          allResults.push({
+            race_id: race.id,
+            race_name: race.name,
+            race_date: race.date,
+            heat_number: result.heat_number || 1,
+            heat_name: result.heat_number ? `Bateria ${result.heat_number}` : "Bateria única",
+            position: result.position,
+            qualification_position: result.qualification_position,
+            fastest_lap: result.fastest_lap,
+            dnf: result.dnf,
+            dq: result.dq,
+            points
+          });
         }
-        
-        // Calcular pontos se tiver posição e não estiver desqualificado
-        let points = 0
-        if (scoringSystem && data.position !== null && !data.dq) {
-          const positionStr = data.position.toString()
-          points = scoringSystem.points[positionStr] || 0
-        }
-        
-        return {
-          race_id: race.id,
-          race_name: race.name,
-          race_date: race.date,
-          position: data.position,
-          qualification_position: data.qualification_position,
-          fastest_lap: data.fastest_lap,
-          dnf: data.dnf,
-          dq: data.dq,
-          points
-        }
-      })
+      }
       
-      const results = await Promise.all(resultsPromises)
+      // Organizar resultados por corrida para exibição
+      const resultsByRaceHeat: Record<string, any> = {};
+      allResults.forEach(result => {
+        // Chave composta por ID da corrida e número da bateria
+        const key = `${result.race_id}_${result.heat_number}`;
+        resultsByRaceHeat[key] = result;
+      });
       
-      // Criar um objeto com os resultados por corrida
-      const resultsByRace: Record<string, any> = {}
-      results.forEach(result => {
-        resultsByRace[result.race_id] = result
-      })
-      
-      setSelectedPilotResults(resultsByRace)
+      setSelectedPilotResults(resultsByRaceHeat);
     } catch (error) {
       console.error("Erro ao buscar detalhes do piloto:", error)
       toast.error("Erro ao carregar detalhes do piloto")
@@ -648,6 +705,11 @@ export default function ChampionshipDetail({ params }: ChampionshipDetailProps) 
                 </AvatarFallback>
               </Avatar>
               <span className="font-medium">{championship.name}</span>
+              {isPilot && !isOwner && (
+                <span className="text-xs bg-blue-50 text-blue-600 px-2 py-0.5 rounded-full">
+                  Participando
+                </span>
+              )}
             </div>
             {isOwner && (
               <div className="flex items-center gap-2">
@@ -664,11 +726,11 @@ export default function ChampionshipDetail({ params }: ChampionshipDetailProps) 
       <main className="container mx-auto px-4 py-6 md:py-8 space-y-8">
         {/* Tabs Section */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-4 md:w-auto md:inline-flex">
+          <TabsList className={`grid w-full ${isOwner ? "grid-cols-4" : "grid-cols-2"} md:w-auto md:inline-flex`}>
             <TabsTrigger value="overview">Visão Geral</TabsTrigger>
-            <TabsTrigger value="categories">Categorias</TabsTrigger>
-            <TabsTrigger value="races">Etapas</TabsTrigger>
-            <TabsTrigger value="standings">Classificação</TabsTrigger>
+            {isOwner && <TabsTrigger value="categories">Categorias</TabsTrigger>}
+            {isOwner && <TabsTrigger value="races">Etapas</TabsTrigger>}
+            {(isOwner || isPilot) && <TabsTrigger value="standings">Classificação</TabsTrigger>}
           </TabsList>
           
           {/* Overview Tab */}
@@ -767,307 +829,446 @@ export default function ChampionshipDetail({ params }: ChampionshipDetailProps) 
                 </div>
               </CardContent>
             </Card>
+
+            {/* Calendário de Etapas */}
+            {!isOwner && (
+              <Card>
+                <CardHeader>
+                  <CardTitle>Calendário de Etapas</CardTitle>
+                  <CardDescription>Cronograma de corridas do campeonato</CardDescription>
+                </CardHeader>
+                <CardContent className="px-0">
+                  {races.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center py-8 text-center">
+                      <div className="bg-muted/50 p-4 rounded-full mb-4">
+                        <Calendar className="h-6 w-6 text-muted-foreground/70" />
+                      </div>
+                      <h3 className="text-base font-medium mb-2">Nenhuma etapa agendada</h3>
+                      <p className="text-muted-foreground text-sm max-w-md">
+                        {isOwner 
+                          ? "Adicione etapas para visualizar o calendário." 
+                          : "Este campeonato ainda não possui etapas agendadas."}
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="divide-y">
+                      {races
+                        .sort((a, b) => new Date(a.date || '9999-12-31').getTime() - new Date(b.date || '9999-12-31').getTime())
+                        .map((race) => (
+                          <div key={race.id} className="flex items-center justify-between px-6 py-4">
+                            <div className="flex items-start gap-4">
+                              <div className="bg-muted/30 rounded-md p-2 h-12 w-12 flex flex-col items-center justify-center text-center">
+                                {race.date ? (
+                                  <>
+                                    <span className="text-xs font-semibold">{format(parseISO(race.date), "MMM", { locale: ptBR })}</span>
+                                    <span className="text-lg font-bold leading-none">{format(parseISO(race.date), "dd")}</span>
+                                  </>
+                                ) : (
+                                  <span className="text-xs font-medium">Data não<br/>definida</span>
+                                )}
+                              </div>
+                              <div>
+                                <h4 className="text-sm font-medium">{race.name}</h4>
+                                <div className="mt-1 flex flex-col gap-0.5">
+                                  {race.description && (
+                                    <p className="text-xs text-muted-foreground line-clamp-1">
+                                      {race.description}
+                                    </p>
+                                  )}
+                                  {race.location && (
+                                    <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                                      <MapPin className="h-3 w-3" />
+                                      <span>{race.location}</span>
+                                    </div>
+                                  )}
+                                  {race.track_layout && (
+                                    <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                                      <Route className="h-3 w-3" />
+                                      <span>{race.track_layout}</span>
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <span className={`text-xs px-2 py-1 rounded-full ${
+                                race.status === 'completed' 
+                                  ? 'bg-green-50 text-green-700' 
+                                  : race.status === 'cancelled' 
+                                    ? 'bg-red-50 text-red-700' 
+                                    : 'bg-blue-50 text-blue-700'
+                              }`}>
+                                {race.status === 'completed' 
+                                  ? 'Concluída' 
+                                  : race.status === 'cancelled' 
+                                    ? 'Cancelada' 
+                                    : 'Agendada'}
+                              </span>
+                              {isOwner && (
+                                <Button 
+                                  variant="outline" 
+                                  size="sm"
+                                  onClick={() => router.push(`/league/${leagueId}/championships/${championshipId}/races/${race.id}`)}
+                                >
+                                  <Edit className="h-4 w-4" />
+                                </Button>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            )}
           </TabsContent>
           
           {/* Categories Tab */}
           <TabsContent value="categories" className="space-y-6">
-            <div className="flex items-center justify-between">
-              <h2 className="text-xl font-semibold">Categorias</h2>
-              {isOwner && (
-                <CreateCategoryModal 
-                  championshipId={championshipId} 
-                  onSuccess={handleCategoryCreated} 
-                />
-              )}
-            </div>
-            
-            {categories.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-12 text-center">
-                <div className="bg-muted/50 p-4 rounded-full mb-4">
-                  <Tag className="h-8 w-8 text-muted-foreground/70" />
+            {isOwner || isPilot ? (
+              <>
+                <div className="flex items-center justify-between">
+                  <h2 className="text-xl font-semibold">Categorias</h2>
+                  {isOwner && (
+                    <CreateCategoryModal 
+                      championshipId={championshipId} 
+                      onSuccess={handleCategoryCreated} 
+                    />
+                  )}
                 </div>
-                <h3 className="text-lg font-medium mb-2">Nenhuma categoria encontrada</h3>
-                <p className="text-muted-foreground text-sm max-w-md mb-6">
-                  Crie categorias para organizar os pilotos do campeonato.
-                </p>
-                {isOwner && (
-                  <CreateCategoryModal 
-                    championshipId={championshipId} 
-                    onSuccess={handleCategoryCreated} 
-                  />
-                )}
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-                {categories.map((category) => (
-                  <Card key={category.id} className="border border-border/40 shadow-none hover:shadow-sm transition-all">
-                    <CardHeader className="pb-3">
-                      <div className="flex justify-between">
-                        <CardTitle className="text-base">{category.name}</CardTitle>
-                      </div>
-                    </CardHeader>
-                    <CardContent className="pb-3">
-                      <p className="text-sm text-muted-foreground line-clamp-2">
-                        {category.description || "Sem descrição"}
-                      </p>
-                      <div className="mt-3 flex flex-col gap-1.5">
-                        <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                          <Users className="h-3.5 w-3.5" />
-                          <span>
-                            {`${category.pilot_count}${category.max_pilots ? `/${category.max_pilots}` : ""} pilotos`}
-                          </span>
-                        </div>
-                        {category.ballast_kg !== null && (
-                          <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                            <Weight className="h-3.5 w-3.5" />
-                            <span>
-                              {`${category.ballast_kg} Kg de lastro`}
-                            </span>
+                
+                {categories.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center py-12 text-center">
+                    <div className="bg-muted/50 p-4 rounded-full mb-4">
+                      <Tag className="h-8 w-8 text-muted-foreground/70" />
+                    </div>
+                    <h3 className="text-lg font-medium mb-2">Nenhuma categoria encontrada</h3>
+                    <p className="text-muted-foreground text-sm max-w-md mb-6">
+                      {isOwner 
+                        ? "Crie categorias para organizar os pilotos do campeonato." 
+                        : "Este campeonato ainda não possui categorias configuradas."}
+                    </p>
+                    {isOwner && (
+                      <CreateCategoryModal 
+                        championshipId={championshipId} 
+                        onSuccess={handleCategoryCreated} 
+                      />
+                    )}
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+                    {categories.map((category) => (
+                      <Card key={category.id} className="border border-border/40 shadow-none hover:shadow-sm transition-all">
+                        <CardHeader className="pb-3">
+                          <div className="flex justify-between">
+                            <CardTitle className="text-base">{category.name}</CardTitle>
                           </div>
-                        )}
-                      </div>
-                    </CardContent>
-                    <CardFooter className="pt-2">
-                      <Button 
-                        variant="outline" 
-                        size="sm" 
-                        className="gap-1.5 w-full"
-                        onClick={() => router.push(`/league/${leagueId}/championships/${championshipId}/categories/${category.id}`)}
-                      >
-                        Editar
-                      </Button>
-                    </CardFooter>
-                  </Card>
-                ))}
-              </div>
-            )}
+                        </CardHeader>
+                        <CardContent className="pb-3">
+                          <p className="text-sm text-muted-foreground line-clamp-2">
+                            {category.description || "Sem descrição"}
+                          </p>
+                          <div className="mt-3 flex flex-col gap-1.5">
+                            <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                              <Users className="h-3.5 w-3.5" />
+                              <span>
+                                {`${category.pilot_count}${category.max_pilots ? `/${category.max_pilots}` : ""} pilotos`}
+                              </span>
+                            </div>
+                            {category.ballast_kg !== null && (
+                              <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                                <Weight className="h-3.5 w-3.5" />
+                                <span>
+                                  {`${category.ballast_kg} Kg de lastro`}
+                                </span>
+                              </div>
+                            )}
+                          </div>
+                        </CardContent>
+                        <CardFooter className="pt-2">
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
+                            className="gap-1.5 w-full"
+                            onClick={() => router.push(`/league/${leagueId}/championships/${championshipId}/categories/${category.id}`)}
+                          >
+                            Editar
+                          </Button>
+                        </CardFooter>
+                      </Card>
+                    ))}
+                  </div>
+                )}
+              </>
+            ) : null}
           </TabsContent>
           
           {/* Races Tab */}
           <TabsContent value="races" className="space-y-6">
-            <div className="flex items-center justify-between">
-              <h2 className="text-xl font-semibold">Etapas</h2>
-              {isOwner && (
-                <CreateRaceModal
-                  championshipId={championshipId}
-                  onSuccess={handleRaceCreated}
-                />
-              )}
-            </div>
-            
-            {races.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-12 text-center">
-                <div className="bg-muted/50 p-4 rounded-full mb-4">
-                  <Tag className="h-8 w-8 text-muted-foreground/70" />
+            {isOwner || isPilot ? (
+              <>
+                <div className="flex items-center justify-between">
+                  <h2 className="text-xl font-semibold">Etapas</h2>
+                  {isOwner && (
+                    <CreateRaceModal
+                      championshipId={championshipId}
+                      onSuccess={handleRaceCreated}
+                    />
+                  )}
                 </div>
-                <h3 className="text-lg font-medium mb-2">Nenhuma etapa encontrada</h3>
-                <p className="text-muted-foreground text-sm max-w-md mb-6">
-                  Crie etapas para organizar as corridas do campeonato.
-                </p>
-                {isOwner && (
-                  <CreateRaceModal
-                    championshipId={championshipId}
-                    onSuccess={handleRaceCreated}
-                  />
-                )}
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-                {races.map((race) => (
-                  <Card key={race.id} className="border border-border/40 shadow-none hover:shadow-sm transition-all">
-                    <CardHeader className="pb-3">
-                      <div className="flex justify-between">
-                        <CardTitle className="text-base">{race.name}</CardTitle>
-                      </div>
+                
+                {races.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center py-12 text-center">
+                    <div className="bg-muted/50 p-4 rounded-full mb-4">
+                      <Tag className="h-8 w-8 text-muted-foreground/70" />
+                    </div>
+                    <h3 className="text-lg font-medium mb-2">Nenhuma etapa encontrada</h3>
+                    <p className="text-muted-foreground text-sm max-w-md mb-6">
+                      {isOwner 
+                        ? "Crie etapas para organizar as corridas do campeonato." 
+                        : "Este campeonato ainda não possui etapas configuradas."}
+                    </p>
+                    {isOwner && (
+                      <CreateRaceModal
+                        championshipId={championshipId}
+                        onSuccess={handleRaceCreated}
+                      />
+                    )}
+                  </div>
+                ) : (
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Calendário de Etapas</CardTitle>
+                      <CardDescription>Gerencie as corridas do campeonato</CardDescription>
                     </CardHeader>
-                    <CardContent className="pb-3">
-                      <p className="text-sm text-muted-foreground line-clamp-2">
-                        {race.description || "Sem descrição"}
-                      </p>
-                      <div className="mt-3 flex flex-col gap-1.5">
-                        <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                          <MapPin className="h-3.5 w-3.5" />
-                          <span>
-                            {race.location || "Localização não definida"}
-                          </span>
-                        </div>
-                        <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                          <Route className="h-3.5 w-3.5" />
-                          <span>
-                            {race.track_layout || "Layout de pista não definido"}
-                          </span>
-                        </div>
+                    <CardContent className="px-0">
+                      <div className="divide-y">
+                        {races
+                          .sort((a, b) => new Date(a.date || '9999-12-31').getTime() - new Date(b.date || '9999-12-31').getTime())
+                          .map((race) => (
+                            <div key={race.id} className="flex items-center justify-between px-6 py-4">
+                              <div className="flex items-start gap-4">
+                                <div className="bg-muted/30 rounded-md p-2 h-12 w-12 flex flex-col items-center justify-center text-center">
+                                  {race.date ? (
+                                    <>
+                                      <span className="text-xs font-semibold">{format(parseISO(race.date), "MMM", { locale: ptBR })}</span>
+                                      <span className="text-lg font-bold leading-none">{format(parseISO(race.date), "dd")}</span>
+                                    </>
+                                  ) : (
+                                    <span className="text-xs font-medium">Data não<br/>definida</span>
+                                  )}
+                                </div>
+                                <div>
+                                  <h4 className="text-sm font-medium">{race.name}</h4>
+                                  <div className="mt-1 flex flex-col gap-0.5">
+                                    {race.description && (
+                                      <p className="text-xs text-muted-foreground line-clamp-1">
+                                        {race.description}
+                                      </p>
+                                    )}
+                                    {race.location && (
+                                      <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                                        <MapPin className="h-3 w-3" />
+                                        <span>{race.location}</span>
+                                      </div>
+                                    )}
+                                    {race.track_layout && (
+                                      <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                                        <Route className="h-3 w-3" />
+                                        <span>{race.track_layout}</span>
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <span className={`text-xs px-2 py-1 rounded-full ${
+                                  race.status === 'completed' 
+                                    ? 'bg-green-50 text-green-700' 
+                                    : race.status === 'cancelled' 
+                                      ? 'bg-red-50 text-red-700' 
+                                      : 'bg-blue-50 text-blue-700'
+                                }`}>
+                                  {race.status === 'completed' 
+                                    ? 'Concluída' 
+                                    : race.status === 'cancelled' 
+                                      ? 'Cancelada' 
+                                      : 'Agendada'}
+                                </span>
+                                {isOwner && (
+                                  <Button 
+                                    variant="outline" 
+                                    size="sm"
+                                    onClick={() => router.push(`/league/${leagueId}/championships/${championshipId}/races/${race.id}`)}
+                                  >
+                                    <Edit className="h-4 w-4" />
+                                  </Button>
+                                )}
+                              </div>
+                            </div>
+                          ))}
                       </div>
                     </CardContent>
-                    <CardFooter className="pt-2">
-                      <Button 
-                        variant="outline" 
-                        size="sm" 
-                        className="gap-1.5 w-full"
-                        onClick={() => router.push(`/league/${leagueId}/championships/${championshipId}/races/${race.id}`)}
-                      >
-                        Editar
-                      </Button>
-                    </CardFooter>
                   </Card>
-                ))}
-              </div>
-            )}
+                )}
+              </>
+            ) : null}
           </TabsContent>
           
           {/* Standings Tab */}
           <TabsContent value="standings" className="space-y-6">
-            <div className="flex items-center justify-between">
-              <h2 className="text-xl font-semibold">Classificação Geral</h2>
-              {championship && (
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  onClick={fetchPilotStandings}
-                  disabled={loadingStandings}
-                >
-                  {loadingStandings ? (
-                    <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Atualizando...</>
-                  ) : (
-                    <>Atualizar Classificação</>
-                  )}
-                </Button>
-              )}
-            </div>
-            
-            {categories.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-12 text-center">
-                <div className="bg-muted/50 p-4 rounded-full mb-4">
-                  <Medal className="h-8 w-8 text-muted-foreground/70" />
-                </div>
-                <h3 className="text-lg font-medium mb-2">Nenhuma categoria encontrada</h3>
-                <p className="text-muted-foreground text-sm max-w-md mb-6">
-                  Crie categorias primeiro para visualizar a classificação.
-                </p>
-                {isOwner && (
-                  <CreateCategoryModal 
-                    championshipId={championshipId} 
-                    onSuccess={handleCategoryCreated} 
-                  />
-                )}
-              </div>
-            ) : (
+            {isOwner || isPilot ? (
               <>
-                {/* Seletor de Categoria */}
-                <div className="space-y-2">
-                  <Label htmlFor="category-select">Categoria</Label>
-                  <Select 
-                    value={standingsCategory || ""} 
-                    onValueChange={(value: string) => setStandingsCategory(value)}
-                  >
-                    <SelectTrigger id="category-select">
-                      <SelectValue placeholder="Selecione uma categoria" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {categories.map((category) => (
-                        <SelectItem key={category.id} value={category.id}>
-                          {category.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                <div className="flex items-center justify-between">
+                  <h2 className="text-xl font-semibold">Classificação Geral</h2>
                 </div>
-
-                {loadingStandings ? (
-                  <div className="flex justify-center py-12">
-                    <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                
+                {categories.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center py-12 text-center">
+                    <div className="bg-muted/50 p-4 rounded-full mb-4">
+                      <Medal className="h-8 w-8 text-muted-foreground/70" />
+                    </div>
+                    <h3 className="text-lg font-medium mb-2">Nenhuma categoria encontrada</h3>
+                    <p className="text-muted-foreground text-sm max-w-md mb-6">
+                      {isOwner 
+                        ? "Crie categorias primeiro para visualizar a classificação." 
+                        : "Este campeonato ainda não possui categorias configuradas."}
+                    </p>
+                    {isOwner && (
+                      <CreateCategoryModal 
+                        championshipId={championshipId} 
+                        onSuccess={handleCategoryCreated} 
+                      />
+                    )}
                   </div>
                 ) : (
                   <>
-                    {standingsCategory && pilotStandings[standingsCategory]?.length > 0 ? (
-                      <div className="rounded-md border overflow-hidden">
-                        <div className="overflow-x-auto">
-                          <table className="w-full divide-y">
-                            <thead className="bg-muted">
-                              <tr>
-                                <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider w-20">
-                                  Pos.
-                                </th>
-                                <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                                  Piloto
-                                </th>
-                                <th className="px-4 py-3 text-center text-xs font-medium text-muted-foreground uppercase tracking-wider w-24">
-                                  Pontos
-                                </th>
-                                <th className="px-4 py-3 text-center text-xs font-medium text-muted-foreground uppercase tracking-wider w-24 hidden md:table-cell">
-                                  V. Rápidas
-                                </th>
-                                <th className="px-4 py-3 text-center text-xs font-medium text-muted-foreground uppercase tracking-wider w-24 hidden md:table-cell">
-                                  DNF/DSQ
-                                </th>
-                              </tr>
-                            </thead>
-                            <tbody className="bg-white divide-y">
-                              {pilotStandings[standingsCategory].map((standing) => (
-                                <tr 
-                                  key={standing.pilot_id} 
-                                  className="hover:bg-muted/40 transition-colors cursor-pointer" 
-                                  onClick={() => handleShowPilotDetails(standing)}
-                                >
-                                  <td className="px-4 py-3 whitespace-nowrap text-sm">
-                                    <div className="flex items-center gap-1">
-                                      <span className="font-semibold">{standing.position}</span>
-                                      <span className="text-xs text-muted-foreground ml-1">
-                                        {standing.position !== undefined && 
-                                         standing.previous_position !== undefined && 
-                                         standing.position !== standing.previous_position && (
-                                          standing.position < standing.previous_position ? (
-                                            <ArrowUp className="h-3.5 w-3.5 text-green-500" />
-                                          ) : standing.position > standing.previous_position ? (
-                                            <ArrowDown className="h-3.5 w-3.5 text-red-500" />
-                                          ) : (
-                                            <Minus className="h-3.5 w-3.5 text-muted-foreground" />
-                                          )
-                                        )}
-                                      </span>
-                                    </div>
-                                  </td>
-                                  <td className="px-4 py-3 whitespace-nowrap">
-                                    <div className="flex items-center">
-                                      <Avatar className="h-7 w-7 mr-2 hidden sm:inline-flex">
-                                        <AvatarImage src={standing.pilot_avatar || undefined} />
-                                        <AvatarFallback className="text-xs">
-                                          {standing.pilot_name.charAt(0)}
-                                        </AvatarFallback>
-                                      </Avatar>
-                                      <span className="text-sm font-medium">{standing.pilot_name}</span>
-                                    </div>
-                                  </td>
-                                  <td className="px-4 py-3 whitespace-nowrap text-sm text-center font-semibold">
-                                    {standing.total_points}
-                                  </td>
-                                  <td className="px-4 py-3 whitespace-nowrap text-sm text-center hidden md:table-cell">
-                                    {standing.fastest_laps}
-                                  </td>
-                                  <td className="px-4 py-3 whitespace-nowrap text-sm text-center hidden md:table-cell">
-                                    {standing.dnfs + standing.dqs}
-                                  </td>
-                                </tr>
-                              ))}
-                            </tbody>
-                          </table>
-                        </div>
+                    {/* Seletor de Categoria - Quando for somente piloto, mostrar só as categorias onde ele participa */}
+                    <div className="space-y-2">
+                      <Label htmlFor="category-select">Categoria</Label>
+                      <Select 
+                        value={standingsCategory || ""} 
+                        onValueChange={(value: string) => setStandingsCategory(value)}
+                      >
+                        <SelectTrigger id="category-select">
+                          <SelectValue placeholder="Selecione uma categoria" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {isOwner 
+                            ? categories.map((category) => (
+                                <SelectItem key={category.id} value={category.id}>
+                                  {category.name}
+                                </SelectItem>
+                              ))
+                            : categories
+                                .filter(category => userCategories.includes(category.id))
+                                .map((category) => (
+                                  <SelectItem key={category.id} value={category.id}>
+                                    {category.name}
+                                  </SelectItem>
+                                ))
+                          }
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    {loadingStandings ? (
+                      <div className="flex justify-center py-12">
+                        <Loader2 className="h-8 w-8 animate-spin text-primary" />
                       </div>
                     ) : (
-                      <div className="flex flex-col items-center justify-center py-12 text-center">
-                        <div className="bg-muted/50 p-4 rounded-full mb-4">
-                          <Trophy className="h-8 w-8 text-muted-foreground/70" />
-                        </div>
-                        <h3 className="text-lg font-medium mb-2">Nenhum resultado disponível</h3>
-                        <p className="text-muted-foreground text-sm max-w-md">
-                          Adicione pilotos às categorias e registre resultados das etapas para visualizar a classificação.
-                        </p>
-                      </div>
+                      <>
+                        {standingsCategory && pilotStandings[standingsCategory]?.length > 0 ? (
+                          <div className="rounded-md border overflow-hidden">
+                            <div className="overflow-x-auto">
+                              <table className="w-full divide-y">
+                                <thead className="bg-muted">
+                                  <tr>
+                                    <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider w-20">
+                                      Pos.
+                                    </th>
+                                    <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                                      Piloto
+                                    </th>
+                                    <th className="px-4 py-3 text-center text-xs font-medium text-muted-foreground uppercase tracking-wider w-24">
+                                      Pontos
+                                    </th>
+                                    <th className="px-4 py-3 text-center text-xs font-medium text-muted-foreground uppercase tracking-wider w-24 hidden md:table-cell">
+                                      V. Rápidas
+                                    </th>
+                                    <th className="px-4 py-3 text-center text-xs font-medium text-muted-foreground uppercase tracking-wider w-24 hidden md:table-cell">
+                                      DNF/DSQ
+                                    </th>
+                                  </tr>
+                                </thead>
+                                <tbody className="bg-white divide-y">
+                                  {pilotStandings[standingsCategory].map((standing) => (
+                                    <tr 
+                                      key={standing.pilot_id} 
+                                      className="hover:bg-muted/40 transition-colors cursor-pointer" 
+                                      onClick={() => handleShowPilotDetails(standing)}
+                                    >
+                                      <td className="px-4 py-3 whitespace-nowrap text-sm">
+                                        <div className="flex items-center gap-1">
+                                          <span className="font-semibold">{standing.position}</span>
+                                          <span className="text-xs text-muted-foreground ml-1">
+                                            {standing.position !== undefined && 
+                                             standing.previous_position !== undefined && 
+                                             standing.position !== standing.previous_position && (
+                                              standing.position < standing.previous_position ? (
+                                                <ArrowUp className="h-3.5 w-3.5 text-green-500" />
+                                              ) : standing.position > standing.previous_position ? (
+                                                <ArrowDown className="h-3.5 w-3.5 text-red-500" />
+                                              ) : (
+                                                <Minus className="h-3.5 w-3.5 text-muted-foreground" />
+                                              )
+                                            )}
+                                          </span>
+                                        </div>
+                                      </td>
+                                      <td className="px-4 py-3 whitespace-nowrap">
+                                        <div className="flex items-center">
+                                          <Avatar className="h-7 w-7 mr-2 hidden sm:inline-flex">
+                                            <AvatarImage src={standing.pilot_avatar || undefined} />
+                                            <AvatarFallback className="text-xs">
+                                              {standing.pilot_name.charAt(0)}
+                                            </AvatarFallback>
+                                          </Avatar>
+                                          <span className="text-sm font-medium">{standing.pilot_name}</span>
+                                        </div>
+                                      </td>
+                                      <td className="px-4 py-3 whitespace-nowrap text-sm text-center font-semibold">
+                                        {standing.total_points}
+                                      </td>
+                                      <td className="px-4 py-3 whitespace-nowrap text-sm text-center hidden md:table-cell">
+                                        {standing.fastest_laps}
+                                      </td>
+                                      <td className="px-4 py-3 whitespace-nowrap text-sm text-center hidden md:table-cell">
+                                        {standing.dnfs + standing.dqs}
+                                      </td>
+                                    </tr>
+                                  ))}
+                                </tbody>
+                              </table>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="flex flex-col items-center justify-center py-12 text-center">
+                            <div className="bg-muted/50 p-4 rounded-full mb-4">
+                              <Trophy className="h-8 w-8 text-muted-foreground/70" />
+                            </div>
+                            <h3 className="text-lg font-medium mb-2">Nenhum resultado disponível</h3>
+                            <p className="text-muted-foreground text-sm max-w-md">
+                              Adicione pilotos às categorias e registre resultados das etapas para visualizar a classificação.
+                            </p>
+                          </div>
+                        )}
+                      </>
                     )}
                   </>
                 )}
               </>
-            )}
+            ) : null}
           </TabsContent>
         </Tabs>
       </main>
@@ -1112,6 +1313,9 @@ export default function ChampionshipDetail({ params }: ChampionshipDetailProps) 
                         Etapa
                       </th>
                       <th className="px-4 py-2 text-center text-xs font-medium text-muted-foreground uppercase tracking-wider w-24">
+                        Bateria
+                      </th>
+                      <th className="px-4 py-2 text-center text-xs font-medium text-muted-foreground uppercase tracking-wider w-24">
                         Pos.
                       </th>
                       <th className="px-4 py-2 text-center text-xs font-medium text-muted-foreground uppercase tracking-wider w-24">
@@ -1124,11 +1328,21 @@ export default function ChampionshipDetail({ params }: ChampionshipDetailProps) 
                   </thead>
                   <tbody className="bg-white divide-y">
                     {Object.values(selectedPilotResults)
-                      .sort((a, b) => new Date(a.race_date || 0).getTime() - new Date(b.race_date || 0).getTime())
+                      .sort((a, b) => {
+                        // Ordenar primeiro por data da corrida
+                        const dateComparison = new Date(a.race_date || 0).getTime() - new Date(b.race_date || 0).getTime();
+                        if (dateComparison !== 0) return dateComparison;
+                        
+                        // Em caso de mesma corrida, ordenar por número da bateria
+                        return a.heat_number - b.heat_number;
+                      })
                       .map((result) => (
-                        <tr key={result.race_id} className="hover:bg-muted/40 transition-colors">
+                        <tr key={`${result.race_id}_${result.heat_number}`} className="hover:bg-muted/40 transition-colors">
                           <td className="px-4 py-2 whitespace-nowrap text-sm">
                             {result.race_name}
+                          </td>
+                          <td className="px-4 py-2 whitespace-nowrap text-sm text-center">
+                            {result.heat_name}
                           </td>
                           <td className="px-4 py-2 whitespace-nowrap text-sm text-center">
                             {result.position !== null ? result.position : result.dq ? 'DSQ' : result.dnf ? 'DNF' : '-'}

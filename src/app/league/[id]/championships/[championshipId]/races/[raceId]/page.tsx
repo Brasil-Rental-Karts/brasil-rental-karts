@@ -34,6 +34,7 @@ import {
   Ban,
   Save,
   AlertCircle,
+  Info,
 } from "lucide-react"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Input } from "@/components/ui/input"
@@ -44,6 +45,18 @@ import { Loader2 } from "lucide-react"
 import { toast } from "sonner"
 import { BackButton } from "@/components/back-button"
 import { EditRaceModal } from "@/components/edit-race-modal"
+import { 
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog"
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 
 interface Race {
   id: string
@@ -98,6 +111,7 @@ interface RaceResult {
   dnf: boolean
   dq: boolean
   notes: string | null
+  heat_number: number
 }
 
 interface PilotWithResult extends Pilot {
@@ -130,16 +144,18 @@ export default function RaceDetail({ params }: RaceDetailProps) {
   const [categoriesWithPilots, setCategoriesWithPilots] = useState<CategoryWithPilots[]>([])
   const [activeTab, setActiveTab] = useState("")
   const [resultsChanged, setResultsChanged] = useState(false)
+  const [activeHeat, setActiveHeat] = useState<number>(1)
+  const [maxHeats, setMaxHeats] = useState<Record<string, number>>({})
   const supabase = createClientComponentClient()
 
-  // Formulário temporário para resultados
   const [tempResults, setTempResults] = useState<{[key: string]: {
     position: string,
     qualification_position: string,
     fastest_lap: boolean,
     dnf: boolean,
     dq: boolean,
-    notes: string
+    notes: string,
+    heat_number: number
   }}>({})
 
   useEffect(() => {
@@ -171,7 +187,6 @@ export default function RaceDetail({ params }: RaceDetailProps) {
           return
         }
 
-        // Buscar dados da liga
         const { data: leagueData, error: leagueError } = await supabase
           .from("leagues")
           .select("*")
@@ -182,7 +197,6 @@ export default function RaceDetail({ params }: RaceDetailProps) {
         setLeague(leagueData)
         setIsOwner(session.user.id === leagueData.owner_id)
 
-        // Buscar dados do campeonato
         const { data: championshipData, error: championshipError } = await supabase
           .from("championships")
           .select("*")
@@ -192,7 +206,6 @@ export default function RaceDetail({ params }: RaceDetailProps) {
         if (championshipError) throw championshipError
         setChampionship(championshipData)
 
-        // Buscar dados da etapa
         const { data: raceData, error: raceError } = await supabase
           .from("races")
           .select("*")
@@ -202,7 +215,6 @@ export default function RaceDetail({ params }: RaceDetailProps) {
         if (raceError) throw raceError
         setRace(raceData)
 
-        // Buscar categorias com pilotos e resultados
         await fetchCategoriesWithPilotsAndResults()
       } catch (error) {
         console.error("Erro ao buscar dados:", error)
@@ -220,7 +232,6 @@ export default function RaceDetail({ params }: RaceDetailProps) {
     if (!championshipId || !raceId) return
 
     try {
-      // 1. Buscar todas as categorias do campeonato
       const { data: categoriesData, error: categoriesError } = await supabase
         .from("categories")
         .select("id, name")
@@ -234,10 +245,11 @@ export default function RaceDetail({ params }: RaceDetailProps) {
         return
       }
 
-      // 2. Para cada categoria, buscar os pilotos e resultados
+      const tempMaxHeats: Record<string, number> = {};
+      const newTempResults = { ...tempResults };
+
       const categoriesFull: CategoryWithPilots[] = await Promise.all(
         categoriesData.map(async (category) => {
-          // Buscar pilotos da categoria
           const { data: categoryPilotsData, error: pilotsError } = await supabase
             .from("category_pilots")
             .select(`
@@ -248,7 +260,6 @@ export default function RaceDetail({ params }: RaceDetailProps) {
           
           if (pilotsError) throw pilotsError
 
-          // Buscar resultados para esta categoria nesta etapa
           const { data: resultsData, error: resultsError } = await supabase
             .from("race_results")
             .select("*")
@@ -257,7 +268,41 @@ export default function RaceDetail({ params }: RaceDetailProps) {
           
           if (resultsError) throw resultsError
 
-          // Mapear pilotos com seus resultados
+          console.log(`Resultados existentes para categoria ${category.name}:`, resultsData);
+
+          let maxHeatNumber = 1;
+          if (resultsData && resultsData.length > 0) {
+            const hasHeatNumber = resultsData.some(r => r.heat_number !== undefined && r.heat_number !== null);
+            
+            if (hasHeatNumber) {
+              const heats = resultsData.map(r => r.heat_number || 1);
+              maxHeatNumber = Math.max(...heats);
+              console.log(`Número máximo de baterias detectado: ${maxHeatNumber}`);
+            } else {
+              console.log(`Nenhum heat_number encontrado nos resultados, usando valor padrão 1`);
+            }
+          }
+          tempMaxHeats[category.id] = maxHeatNumber;
+
+          if (resultsData && resultsData.length > 0) {
+            resultsData.forEach(result => {
+              const heatNum = result.heat_number !== undefined && result.heat_number !== null ? 
+                Number(result.heat_number) : 1;
+              
+              const key = `${result.pilot_id}_${heatNum}`;
+              
+              newTempResults[key] = {
+                position: result.position?.toString() || "",
+                qualification_position: result.qualification_position?.toString() || "",
+                fastest_lap: result.fastest_lap || false,
+                dnf: result.dnf || false,
+                dq: result.dq || false,
+                notes: result.notes || "",
+                heat_number: heatNum
+              };
+            });
+          }
+          
           const pilotsWithResults: PilotWithResult[] = (categoryPilotsData || []).map(cp => {
             const pilotProfile = Array.isArray(cp.pilot_profiles) ? cp.pilot_profiles[0] : cp.pilot_profiles;
             const pilot = {
@@ -265,42 +310,35 @@ export default function RaceDetail({ params }: RaceDetailProps) {
               name: pilotProfile.name
             }
 
-            const result = (resultsData || []).find(r => r.pilot_id === pilot.id) || null
+            const allResults = (resultsData || []).filter(r => r.pilot_id === pilot.id);
             
-            // Adicionar ao estado temporário de resultados
-            if (result) {
-              setTempResults(prev => ({
-                ...prev,
-                [pilot.id]: {
-                  position: result.position?.toString() || "",
-                  qualification_position: result.qualification_position?.toString() || "",
-                  fastest_lap: result.fastest_lap || false,
-                  dnf: result.dnf || false,
-                  dq: result.dq || false,
-                  notes: result.notes || ""
-                }
-              }))
-            } else {
-              setTempResults(prev => ({
-                ...prev,
-                [pilot.id]: {
-                  position: "",
-                  qualification_position: "",
-                  fastest_lap: false,
-                  dnf: false,
-                  dq: false,
-                  notes: ""
-                }
-              }))
+            const activeHeatNum = Number(activeHeat);
+            
+            const result = allResults.find(r => {
+              const resultHeatNum = r.heat_number !== undefined && r.heat_number !== null ? 
+                Number(r.heat_number) : 1;
+              return resultHeatNum === activeHeatNum;
+            }) || null;
+            
+            const key = `${pilot.id}_${activeHeatNum}`;
+            if (!newTempResults[key]) {
+              newTempResults[key] = {
+                position: "",
+                qualification_position: "",
+                fastest_lap: false,
+                dnf: false,
+                dq: false,
+                notes: "",
+                heat_number: activeHeatNum
+              };
             }
 
             return {
               ...pilot,
               result
             }
-          })
+          });
 
-          // Ordenar pilotsWithResults por ordem alfabética
           pilotsWithResults.sort((a, b) => a.name.localeCompare(b.name));
 
           return {
@@ -310,11 +348,12 @@ export default function RaceDetail({ params }: RaceDetailProps) {
             pilotsWithResults
           }
         })
-      )
+      );
 
-      setCategoriesWithPilots(categoriesFull)
+      setTempResults(newTempResults);
+      setCategoriesWithPilots(categoriesFull);
+      setMaxHeats(tempMaxHeats);
       
-      // Definir a primeira categoria como ativa se existir
       if (categoriesFull.length > 0 && !activeTab) {
         setActiveTab(categoriesFull[0].id)
       }
@@ -351,82 +390,370 @@ export default function RaceDetail({ params }: RaceDetailProps) {
   }
 
   const handleInputChange = (pilotId: string, field: string, value: string | boolean) => {
-    setTempResults(prev => ({
-      ...prev,
-      [pilotId]: {
-        ...prev[pilotId],
-        [field]: value
+    const key = `${pilotId}_${activeHeat}`;
+    
+    // Tratamento especial para volta mais rápida
+    if (field === "fastest_lap" && value === true) {
+      // Se estamos marcando este piloto com volta mais rápida,
+      // desmarcar todos os outros pilotos da mesma categoria na mesma bateria
+      const newTempResults = { ...tempResults };
+      
+      // Encontrar a categoria atual
+      const currentCategory = categoriesWithPilots.find(c => c.id === activeTab);
+      if (currentCategory) {
+        // Desmarcar a volta mais rápida de todos os outros pilotos
+        currentCategory.pilotsWithResults.forEach(pilot => {
+          if (pilot.id !== pilotId) {
+            const otherPilotKey = `${pilot.id}_${activeHeat}`;
+            if (newTempResults[otherPilotKey]) {
+              newTempResults[otherPilotKey] = {
+                ...newTempResults[otherPilotKey],
+                fastest_lap: false
+              };
+            }
+          }
+        });
       }
-    }))
-    setResultsChanged(true)
+      
+      // Atualizar o piloto atual com a volta mais rápida
+      newTempResults[key] = {
+        ...newTempResults[key],
+        [field]: value
+      };
+      
+      setTempResults(newTempResults);
+    } else {
+      // Comportamento normal para outros campos
+      setTempResults(prev => ({
+        ...prev,
+        [key]: {
+          ...prev[key],
+          [field]: value
+        }
+      }));
+    }
+    
+    setResultsChanged(true);
+  }
+
+  const addHeat = (categoryId: string) => {
+    const newHeatNumber = (maxHeats[categoryId] || 1) + 1;
+    console.log(`Adicionando nova bateria ${newHeatNumber} para categoria ${categoryId}`);
+    
+    setMaxHeats(prev => ({
+      ...prev,
+      [categoryId]: newHeatNumber
+    }));
+    
+    const category = categoriesWithPilots.find(c => c.id === categoryId);
+    if (category) {
+      const newTempResults = { ...tempResults };
+      
+      category.pilotsWithResults.forEach(pilot => {
+        const key = `${pilot.id}_${newHeatNumber}`;
+        console.log(`Inicializando dados para piloto ${pilot.name} na bateria ${newHeatNumber}, chave: ${key}`);
+        
+        newTempResults[key] = {
+          position: "",
+          qualification_position: "",
+          fastest_lap: false,
+          dnf: false,
+          dq: false,
+          notes: "",
+          heat_number: newHeatNumber
+        };
+      });
+      
+      setTempResults(newTempResults);
+    }
+    
+    setActiveHeat(newHeatNumber);
+  }
+
+  const switchHeat = (heatNumber: number) => {
+    console.log(`Alternando para bateria ${heatNumber}`);
+    
+    const currentCategoryId = activeTab;
+    if (currentCategoryId && resultsChanged) {
+      const saveCurrentResults = window.confirm("Você tem alterações não salvas. Deseja salvar antes de trocar de bateria?");
+      if (saveCurrentResults) {
+        saveResults(currentCategoryId);
+      }
+      setResultsChanged(false);
+    }
+    
+    setActiveHeat(heatNumber);
+    fetchCategoriesWithPilotsAndResults();
   }
 
   const saveResults = async (categoryId: string) => {
     if (!raceId) return
     
     setSavingResults(true)
+    const heatNumber = activeHeat;
+    console.log(`Salvando resultados para categoria ${categoryId}, bateria ${heatNumber}`);
     
     try {
       const category = categoriesWithPilots.find(c => c.id === categoryId)
       if (!category) return
+
+      // Primeiro limpar quaisquer resultados existentes para esta bateria
+      // Isso evita problemas com restrições de unicidade
+      await clearExistingResultsForHeat(categoryId, heatNumber);
       
-      // Para cada piloto na categoria
+      // Agora inserir os novos resultados
       for (const pilot of category.pilotsWithResults) {
-        const tempResult = tempResults[pilot.id]
-        if (!tempResult) continue
+        const key = `${pilot.id}_${heatNumber}`;
+        const tempResult = tempResults[key];
+        
+        if (!tempResult) {
+          console.log(`Sem dados para o piloto ${pilot.name} na bateria ${heatNumber}`);
+          continue;
+        }
         
         // Verificar se existem dados significativos para salvar
         const hasData = tempResult.position || 
-                         tempResult.qualification_position || 
-                         tempResult.fastest_lap || 
-                         tempResult.dnf || 
-                         tempResult.dq || 
-                         tempResult.notes
+                        tempResult.qualification_position || 
+                        tempResult.fastest_lap || 
+                        tempResult.dnf || 
+                        tempResult.dq || 
+                        tempResult.notes;
         
-        // Dados a serem salvos/atualizados
-        const resultData = {
-          race_id: raceId,
-          pilot_id: pilot.id,
-          category_id: categoryId,
-          position: tempResult.position ? parseInt(tempResult.position) : null,
-          qualification_position: tempResult.qualification_position ? parseInt(tempResult.qualification_position) : null,
-          fastest_lap: tempResult.fastest_lap || false,
-          dnf: tempResult.dnf || false,
-          dq: tempResult.dq || false,
-          notes: tempResult.notes || null
-        }
-        
-        if (pilot.result) {
-          // Atualizar resultado existente
-          if (hasData) {
-            await supabase
-              .from("race_results")
-              .update(resultData)
-              .eq("id", pilot.result.id)
-          } else {
-            // Se não tem dados significativos, excluir o resultado
-            await supabase
-              .from("race_results")
-              .delete()
-              .eq("id", pilot.result.id)
-          }
-        } else if (hasData) {
-          // Criar novo resultado apenas se houver dados
-          await supabase
+        // Só inserir se tiver dados
+        if (hasData) {
+          console.log(`Inserindo resultado para ${pilot.name}, bateria ${heatNumber}`);
+          
+          const resultData = {
+            race_id: raceId,
+            pilot_id: pilot.id,
+            category_id: categoryId,
+            position: tempResult.position ? parseInt(tempResult.position) : null,
+            qualification_position: tempResult.qualification_position ? parseInt(tempResult.qualification_position) : null,
+            fastest_lap: tempResult.fastest_lap || false,
+            dnf: tempResult.dnf || false,
+            dq: tempResult.dq || false,
+            notes: tempResult.notes || null,
+            heat_number: heatNumber
+          };
+          
+          const { data: insertData, error: insertError } = await supabase
             .from("race_results")
-            .insert([resultData])
+            .insert([resultData]);
+            
+          if (insertError) {
+            console.error(`Erro ao salvar resultado para ${pilot.name}:`, insertError);
+          } else {
+            console.log(`Resultado salvo com sucesso para ${pilot.name}`);
+          }
         }
       }
       
-      // Recarregar os dados
-      await fetchCategoriesWithPilotsAndResults()
-      toast.success("Resultados salvos com sucesso")
-      setResultsChanged(false)
+      // Recarregar os resultados para atualizar a UI
+      await reloadResults(categoryId);
+      
+      toast.success("Resultados salvos com sucesso");
+      setResultsChanged(false);
     } catch (error) {
-      console.error("Erro ao salvar resultados:", error)
-      toast.error("Erro ao salvar resultados")
+      console.error("Erro ao salvar resultados:", error);
+      toast.error("Erro ao salvar resultados");
     } finally {
-      setSavingResults(false)
+      setSavingResults(false);
+    }
+  }
+
+  // Função auxiliar para limpar resultados existentes
+  const clearExistingResultsForHeat = async (categoryId: string, heatNumber: number) => {
+    console.log(`Limpando resultados existentes para categoria ${categoryId}, bateria ${heatNumber}`);
+    
+    try {
+      // Primeiro buscar os IDs dos resultados existentes
+      const { data: existingData, error: existingError } = await supabase
+        .from("race_results")
+        .select("id")
+        .eq("race_id", raceId)
+        .eq("category_id", categoryId)
+        .eq("heat_number", heatNumber);
+        
+      if (existingError) {
+        console.error("Erro ao buscar resultados existentes:", existingError);
+        return;
+      }
+      
+      if (existingData && existingData.length > 0) {
+        console.log(`Encontrados ${existingData.length} resultados existentes para excluir`);
+        
+        for (const row of existingData) {
+          const { error: deleteError } = await supabase
+            .from("race_results")
+            .delete()
+            .eq("id", row.id);
+            
+          if (deleteError) {
+            console.error(`Erro ao excluir resultado ${row.id}:`, deleteError);
+          }
+        }
+      } else {
+        console.log("Nenhum resultado existente encontrado para limpar");
+      }
+    } catch (error) {
+      console.error("Erro não tratado ao limpar resultados:", error);
+    }
+  }
+  
+  // Função para recarregar os resultados após salvar
+  const reloadResults = async (categoryId: string) => {
+    try {
+      // Buscar a categoria atual
+      const category = categoriesWithPilots.find(c => c.id === categoryId);
+      if (!category) return;
+      
+      // Criar uma cópia atualizada da categoria
+      const updatedCategory = { ...category };
+      
+      // Buscar os resultados atualizados para cada piloto
+      updatedCategory.pilotsWithResults = await Promise.all(
+        category.pilotsWithResults.map(async (pilot) => {
+          const { data: result, error } = await supabase
+            .from("race_results")
+            .select("*")
+            .eq("race_id", raceId)
+            .eq("pilot_id", pilot.id)
+            .eq("category_id", categoryId)
+            .eq("heat_number", activeHeat)
+            .maybeSingle();
+            
+          if (error) {
+            console.error(`Erro ao buscar resultado para ${pilot.name}:`, error);
+          }
+          
+          return {
+            ...pilot,
+            result: result || null
+          };
+        })
+      );
+      
+      // Atualizar apenas esta categoria no estado
+      setCategoriesWithPilots(prev => 
+        prev.map(cat => cat.id === categoryId ? updatedCategory : cat)
+      );
+    } catch (error) {
+      console.error("Erro ao recarregar resultados:", error);
+    }
+  }
+
+  const removeHeat = async (categoryId: string, heatNumber: number) => {
+    if (!raceId) return;
+    
+    try {
+      setLoading(true);
+      console.log(`Removendo bateria ${heatNumber} da categoria ${categoryId}`);
+      
+      // Eliminar os resultados desta bateria
+      const { error } = await supabase
+        .from("race_results")
+        .delete()
+        .eq("race_id", raceId)
+        .eq("category_id", categoryId)
+        .eq("heat_number", heatNumber);
+        
+      if (error) {
+        console.error("Erro ao excluir resultados da bateria:", error);
+        toast.error("Erro ao excluir a bateria");
+        return;
+      }
+      
+      // Reajustar números de baterias subsequentes
+      if (heatNumber < maxHeats[categoryId]) {
+        // Buscar todas as baterias posteriores
+        const { data: laterHeats, error: fetchError } = await supabase
+          .from("race_results")
+          .select("id, heat_number")
+          .eq("race_id", raceId)
+          .eq("category_id", categoryId)
+          .gt("heat_number", heatNumber);
+          
+        if (fetchError) {
+          console.error("Erro ao buscar baterias subsequentes:", fetchError);
+        } else if (laterHeats && laterHeats.length > 0) {
+          console.log(`Reajustando ${laterHeats.length} resultados de baterias subsequentes`);
+          
+          // Atualizar cada resultado das baterias subsequentes
+          for (const heatResult of laterHeats) {
+            const { error: updateError } = await supabase
+              .from("race_results")
+              .update({ heat_number: heatResult.heat_number - 1 })
+              .eq("id", heatResult.id);
+              
+            if (updateError) {
+              console.error(`Erro ao ajustar heat_number para resultado ${heatResult.id}:`, updateError);
+            }
+          }
+        }
+      }
+      
+      // Atualizar o estado local
+      const newMaxHeats = { ...maxHeats };
+      newMaxHeats[categoryId] = Math.max(1, (maxHeats[categoryId] || 1) - 1);
+      setMaxHeats(newMaxHeats);
+      
+      // Se a bateria atual foi removida ou é maior que o máximo, volte para a bateria 1
+      if (activeHeat === heatNumber || activeHeat > newMaxHeats[categoryId]) {
+        setActiveHeat(1);
+      }
+      
+      // Recarregar os dados
+      await fetchCategoriesWithPilotsAndResults();
+      
+      toast.success("Bateria removida com sucesso");
+    } catch (error) {
+      console.error("Erro ao remover bateria:", error);
+      toast.error("Erro ao excluir a bateria");
+    } finally {
+      setLoading(false);
+    }
+  }
+  
+  const deleteRace = async () => {
+    if (!raceId || !championshipId) return;
+    
+    try {
+      setLoading(true);
+      console.log(`Removendo etapa ${raceId}`);
+      
+      // Primeiro excluir todos os resultados associados a esta etapa
+      const { error: resultsError } = await supabase
+        .from("race_results")
+        .delete()
+        .eq("race_id", raceId);
+        
+      if (resultsError) {
+        console.error("Erro ao excluir resultados da etapa:", resultsError);
+        toast.error("Erro ao excluir resultados da etapa");
+        return;
+      }
+      
+      // Agora excluir a etapa em si
+      const { error: raceError } = await supabase
+        .from("races")
+        .delete()
+        .eq("id", raceId);
+        
+      if (raceError) {
+        console.error("Erro ao excluir etapa:", raceError);
+        toast.error("Erro ao excluir etapa");
+        return;
+      }
+      
+      toast.success("Etapa excluída com sucesso");
+      // Redirecionar para a página do campeonato
+      router.push(`/league/${leagueId}/championships/${championshipId}`);
+      
+    } catch (error) {
+      console.error("Erro ao excluir etapa:", error);
+      toast.error("Erro ao excluir etapa");
+    } finally {
+      setLoading(false);
     }
   }
 
@@ -451,7 +778,6 @@ export default function RaceDetail({ params }: RaceDetailProps) {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Header Section */}
       <header className="bg-white sticky top-0 z-10 border-b">
         <div className="container mx-auto px-4 py-4">
           <div className="flex flex-row items-center justify-between gap-4">
@@ -483,13 +809,35 @@ export default function RaceDetail({ params }: RaceDetailProps) {
                   race={race}
                   onSuccess={handleRaceUpdated}
                 />
+                
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button variant="destructive" size="icon">
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Excluir Etapa</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        Tem certeza que deseja excluir esta etapa? Esta ação não pode ser desfeita
+                        e todos os resultados associados a esta etapa serão perdidos.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                      <AlertDialogAction onClick={deleteRace} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                        Excluir
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
               </div>
             )}
           </div>
         </div>
       </header>
 
-      {/* Main Content */}
       <main className="container mx-auto px-4 py-6 space-y-8">
         <Card>
           <CardHeader>
@@ -570,6 +918,57 @@ export default function RaceDetail({ params }: RaceDetailProps) {
                   </div>
                 ) : (
                   <>
+                    <div className="flex justify-between items-center">
+                      <div className="flex gap-2">
+                        {Array.from({ length: maxHeats[category.id] || 1 }, (_, i) => i + 1).map((heatNum) => (
+                          <Button
+                            key={heatNum}
+                            variant={activeHeat === heatNum ? "default" : "outline"}
+                            onClick={() => switchHeat(heatNum)}
+                            className="flex gap-1"
+                          >
+                            Bateria {heatNum}
+                            {isOwner && maxHeats[category.id] > 1 && (
+                              <AlertDialog>
+                                <AlertDialogTrigger asChild onClick={(e: React.MouseEvent) => e.stopPropagation()}>
+                                  <XIcon className="h-3.5 w-3.5 text-red-500 cursor-pointer" />
+                                </AlertDialogTrigger>
+                                <AlertDialogContent>
+                                  <AlertDialogHeader>
+                                    <AlertDialogTitle>Excluir Bateria</AlertDialogTitle>
+                                    <AlertDialogDescription>
+                                      Tem certeza que deseja excluir a bateria {heatNum}? Esta ação não pode ser desfeita
+                                      e todos os resultados associados a esta bateria serão perdidos.
+                                    </AlertDialogDescription>
+                                  </AlertDialogHeader>
+                                  <AlertDialogFooter>
+                                    <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                    <AlertDialogAction 
+                                      onClick={(e: React.MouseEvent) => {
+                                        e.stopPropagation(); 
+                                        removeHeat(category.id, heatNum);
+                                      }} 
+                                      className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                    >
+                                      Excluir
+                                    </AlertDialogAction>
+                                  </AlertDialogFooter>
+                                </AlertDialogContent>
+                              </AlertDialog>
+                            )}
+                          </Button>
+                        ))}
+                      </div>
+                      {isOwner && (
+                        <Button 
+                          variant="outline"
+                          onClick={() => addHeat(category.id)}
+                        >
+                          + Nova Bateria
+                        </Button>
+                      )}
+                    </div>
+                    
                     <Card>
                       <Table>
                         <TableHeader>
@@ -577,9 +976,23 @@ export default function RaceDetail({ params }: RaceDetailProps) {
                             <TableHead className="w-16">Pos.</TableHead>
                             <TableHead>Piloto</TableHead>
                             <TableHead className="w-16">Qual.</TableHead>
-                            <TableHead className="w-28">Melhor Volta</TableHead>
-                            <TableHead className="w-20">DNF</TableHead>
-                            <TableHead className="w-20">DQ</TableHead>
+                            <TableHead className="w-40">
+                              <div className="flex items-center gap-1">
+                                Melhor Volta
+                                <TooltipProvider>
+                                  <Tooltip>
+                                    <TooltipTrigger>
+                                      <Info className="h-3.5 w-3.5 text-muted-foreground" />
+                                    </TooltipTrigger>
+                                    <TooltipContent>
+                                      <p>Apenas um piloto pode ter a volta mais rápida por bateria</p>
+                                    </TooltipContent>
+                                  </Tooltip>
+                                </TooltipProvider>
+                              </div>
+                            </TableHead>
+                            <TableHead className="w-40">DNF</TableHead>
+                            <TableHead className="w-40">DQ</TableHead>
                             <TableHead>Observações</TableHead>
                           </TableRow>
                         </TableHeader>
@@ -591,7 +1004,7 @@ export default function RaceDetail({ params }: RaceDetailProps) {
                                   <Input
                                     type="number"
                                     min="1"
-                                    value={tempResults[pilot.id]?.position || ""}
+                                    value={tempResults[`${pilot.id}_${activeHeat}`]?.position || ""}
                                     onChange={(e) => handleInputChange(pilot.id, "position", e.target.value)}
                                     className="w-16"
                                     placeholder="-"
@@ -606,7 +1019,7 @@ export default function RaceDetail({ params }: RaceDetailProps) {
                                   <Input
                                     type="number"
                                     min="1"
-                                    value={tempResults[pilot.id]?.qualification_position || ""}
+                                    value={tempResults[`${pilot.id}_${activeHeat}`]?.qualification_position || ""}
                                     onChange={(e) => handleInputChange(pilot.id, "qualification_position", e.target.value)}
                                     className="w-16"
                                     placeholder="-"
@@ -619,13 +1032,13 @@ export default function RaceDetail({ params }: RaceDetailProps) {
                                 {isOwner ? (
                                   <div className="flex items-center">
                                     <Checkbox
-                                      id={`fastest-lap-${pilot.id}`}
-                                      checked={tempResults[pilot.id]?.fastest_lap || false}
+                                      id={`fastest-lap-${pilot.id}-${activeHeat}`}
+                                      checked={tempResults[`${pilot.id}_${activeHeat}`]?.fastest_lap || false}
                                       onCheckedChange={(checked) => 
                                         handleInputChange(pilot.id, "fastest_lap", checked === true)
                                       }
                                     />
-                                    <Label htmlFor={`fastest-lap-${pilot.id}`} className="ml-2 text-sm">
+                                    <Label htmlFor={`fastest-lap-${pilot.id}-${activeHeat}`} className="ml-2 text-sm">
                                       Volta mais rápida
                                     </Label>
                                   </div>
@@ -642,13 +1055,13 @@ export default function RaceDetail({ params }: RaceDetailProps) {
                                 {isOwner ? (
                                   <div className="flex items-center">
                                     <Checkbox
-                                      id={`dnf-${pilot.id}`}
-                                      checked={tempResults[pilot.id]?.dnf || false}
+                                      id={`dnf-${pilot.id}-${activeHeat}`}
+                                      checked={tempResults[`${pilot.id}_${activeHeat}`]?.dnf || false}
                                       onCheckedChange={(checked) => 
                                         handleInputChange(pilot.id, "dnf", checked === true)
                                       }
                                     />
-                                    <Label htmlFor={`dnf-${pilot.id}`} className="ml-2 text-sm">
+                                    <Label htmlFor={`dnf-${pilot.id}-${activeHeat}`} className="ml-2 text-sm">
                                       Não completou
                                     </Label>
                                   </div>
@@ -665,13 +1078,13 @@ export default function RaceDetail({ params }: RaceDetailProps) {
                                 {isOwner ? (
                                   <div className="flex items-center">
                                     <Checkbox
-                                      id={`dq-${pilot.id}`}
-                                      checked={tempResults[pilot.id]?.dq || false}
+                                      id={`dq-${pilot.id}-${activeHeat}`}
+                                      checked={tempResults[`${pilot.id}_${activeHeat}`]?.dq || false}
                                       onCheckedChange={(checked) => 
                                         handleInputChange(pilot.id, "dq", checked === true)
                                       }
                                     />
-                                    <Label htmlFor={`dq-${pilot.id}`} className="ml-2 text-sm">
+                                    <Label htmlFor={`dq-${pilot.id}-${activeHeat}`} className="ml-2 text-sm">
                                       Desclassificado
                                     </Label>
                                   </div>
@@ -687,7 +1100,7 @@ export default function RaceDetail({ params }: RaceDetailProps) {
                               <TableCell>
                                 {isOwner ? (
                                   <Textarea
-                                    value={tempResults[pilot.id]?.notes || ""}
+                                    value={tempResults[`${pilot.id}_${activeHeat}`]?.notes || ""}
                                     onChange={(e) => handleInputChange(pilot.id, "notes", e.target.value)}
                                     className="min-h-[40px] h-[40px]"
                                     placeholder="Observações..."

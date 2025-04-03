@@ -56,15 +56,17 @@ export function CreateRaceModal({ championshipId, onSuccess }: CreateRaceModalPr
       if (date) {
         if (time) {
           // Se tiver data e hora, combinar ambos
-          const dateObj = new Date(date)
+          const [year, month, day] = date.split('-').map(Number)
           const [hours, minutes] = time.split(':').map(Number)
-          dateObj.setHours(hours, minutes)
-          combinedDate = dateObj.toISOString()
+          
+          // Criar um objeto Date UTC com os valores exatos (mês em JS é base 0)
+          combinedDate = new Date(Date.UTC(year, month - 1, day, hours, minutes, 0)).toISOString()
         } else {
           // Se tiver só data, usar meio-dia como horário padrão
-          const dateObj = new Date(date)
-          dateObj.setHours(12, 0, 0, 0)
-          combinedDate = dateObj.toISOString()
+          const [year, month, day] = date.split('-').map(Number)
+          
+          // Usar meio-dia no UTC
+          combinedDate = new Date(Date.UTC(year, month - 1, day, 12, 0, 0)).toISOString()
         }
       }
 
