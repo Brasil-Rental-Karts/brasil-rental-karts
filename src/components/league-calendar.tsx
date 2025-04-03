@@ -67,10 +67,24 @@ export function LeagueCalendar({ leagueId }: LeagueCalendarProps) {
 
         if (error) throw error
 
-        const racesWithChampionshipName = (data as RaceWithChampionship[]).map(race => ({
-          ...race,
-          championship_name: race.championships.name
-        }))
+        const racesWithChampionshipName = data?.map(race => {
+          const championshipName = race.championships && typeof race.championships === 'object' 
+            ? Array.isArray(race.championships) && race.championships.length > 0 
+              ? race.championships[0].name 
+              : (race.championships as any).name 
+            : "Sem nome";
+          
+          return {
+            id: race.id,
+            championship_id: race.championship_id,
+            name: race.name,
+            description: race.description,
+            date: race.date,
+            location: race.location,
+            status: race.status,
+            championship_name: championshipName
+          } as Race;
+        }) || [];
 
         setRaces(racesWithChampionshipName)
       } catch (error) {
