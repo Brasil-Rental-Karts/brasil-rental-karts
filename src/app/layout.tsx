@@ -5,7 +5,7 @@ import "./globals.css";
 import { initializeSchema } from "@/lib/supabase"
 
 import { Header } from "@/components/header";
-import { Footer } from "@/components/layout/footer";
+import { ConditionalFooter } from "@/components/layout/conditional-footer";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -46,7 +46,7 @@ export default function RootLayout({
         <main className="min-h-screen">
           {children}
         </main>
-        <Footer />
+        <ConditionalFooter />
         <Analytics />
       </body>
     </html>

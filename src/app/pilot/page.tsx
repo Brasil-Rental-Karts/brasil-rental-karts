@@ -11,6 +11,7 @@ import { Loader2, Trophy, Calendar, History, Plus, ChevronRight, TrendingUp, Use
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import logger from "@/lib/logger"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { PilotCalendar } from "@/components/pilot-calendar"
 
 interface League {
   id: string
@@ -331,6 +332,13 @@ export default function PilotPage() {
               </CardContent>
             </Card>
           </div>
+        </section>
+
+        {/* Calendar Section */}
+        <section>
+          {pilot && pilot.id && (
+            <PilotCalendar pilotId={pilot.id} />
+          )}
         </section>
 
         {/* Leagues Section with Tabs */}

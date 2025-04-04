@@ -51,11 +51,50 @@ export function Header() {
 
   const handleLogout = async () => {
     try {
-      await supabase.auth.signOut()
-      setUser(null)
-      router.push('/login')
+      // Limpar o estado do usuário primeiro para feedback visual imediato
+      setUser(null);
+      
+      // Chamada ao endpoint do servidor
+      await fetch('/api/auth/logout', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      }).catch(err => {
+        console.error('Falha na chamada ao servidor para logout:', err);
+      });
+      
+      // Também fazer logout no cliente como fallback
+      await supabase.auth.signOut().catch(err => {
+        console.error('Falha no logout do cliente:', err);
+      });
+      
+      // Limpar qualquer estado persistente no localStorage
+      if (typeof window !== 'undefined') {
+        try {
+          // Limpar dados específicos do Supabase
+          Object.keys(localStorage).forEach(key => {
+            if (key.startsWith('supabase.auth') || 
+                key.includes('-auth-token') || 
+                key.includes('sb-')) {
+              localStorage.removeItem(key);
+            }
+          });
+        } catch (e) {
+          console.error('Erro ao limpar localStorage:', e);
+        }
+      }
+      
+      // Redirecionar para a página inicial após um pequeno delay
+      // para garantir que todas as operações anteriores tiveram tempo de completar
+      setTimeout(() => {
+        window.location.href = '/';
+      }, 100);
+      
     } catch (error) {
-      console.error('Error logging out:', error)
+      console.error('Erro ao fazer logout:', error);
+      // Em caso de erro, ainda tentar redirecionar para a página inicial
+      window.location.href = '/';
     }
   }
 
@@ -92,7 +131,7 @@ export function Header() {
                 pathname === '/leagues' ? 'text-primary' : 'text-muted-foreground'
               }`}
             >
-              Leagues
+              Ligas
             </Link>
           </nav>
         </div>

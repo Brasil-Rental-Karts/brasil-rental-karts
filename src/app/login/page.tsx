@@ -20,6 +20,16 @@ export default function LoginPage() {
   useEffect(() => {
     const checkAuth = async () => {
       try {
+        // Check if the user just logged out
+        const searchParams = new URLSearchParams(window.location.search);
+        const fromLogout = searchParams.get('logout') === 'true';
+        
+        if (fromLogout) {
+          // If coming from logout, don't redirect even if session exists
+          // Session may still exist in memory but we want to force login screen
+          return;
+        }
+        
         const { data: { session } } = await supabase.auth.getSession()
         if (session) {
           router.push("/pilot")
