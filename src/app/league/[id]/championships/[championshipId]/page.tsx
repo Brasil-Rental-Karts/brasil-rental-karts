@@ -22,6 +22,7 @@ import { format, parseISO } from "date-fns"
 import { ptBR } from "date-fns/locale"
 import { CreateRaceModal } from "@/components/create-race-modal"
 import { EditRaceModal } from "@/components/edit-race-modal"
+import { Breadcrumb, BreadcrumbHome, BreadcrumbItem, BreadcrumbSeparator } from "@/components/ui/breadcrumb"
 import { 
   CheckCircle, 
   X as XIcon, 
@@ -676,8 +677,8 @@ export default function ChampionshipDetail({ params }: ChampionshipDetailProps) 
     return (
       <div className="container mx-auto py-8">
         <h1 className="text-3xl font-bold mb-8">Campeonato não encontrado</h1>
-        <Button onClick={() => router.push(`/league/${leagueId}/championships`)}>
-          Voltar para Campeonatos
+        <Button onClick={() => router.push(`/league/${leagueId}`)}>
+          Voltar para Liga
         </Button>
       </div>
     )
@@ -685,17 +686,12 @@ export default function ChampionshipDetail({ params }: ChampionshipDetailProps) 
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Header Section */}
+      {/* Header */}
       <header className="bg-white sticky top-0 z-10 border-b">
         <div className="container mx-auto px-4 py-4">
           <div className="flex flex-row items-center justify-between gap-4">
             <div className="flex items-center gap-3">
-              <Button 
-                variant="outline" 
-                onClick={() => router.push(`/league/${leagueId}/championships`)} 
-                size="icon" 
-                className="h-9 w-9"
-              >
+              <Button variant="outline" onClick={() => router.push(`/league/${leagueId}`)} size="icon" className="h-9 w-9">
                 <ArrowLeft className="h-4 w-4" />
               </Button>
               <Avatar className="h-10 w-10 ring-2 ring-primary/10 ring-offset-2">
@@ -705,16 +701,16 @@ export default function ChampionshipDetail({ params }: ChampionshipDetailProps) 
                 </AvatarFallback>
               </Avatar>
               <span className="font-medium">{championship.name}</span>
-              {isPilot && !isOwner && (
-                <span className="text-xs bg-blue-50 text-blue-600 px-2 py-0.5 rounded-full">
-                  Participando
-                </span>
-              )}
             </div>
             {isOwner && (
               <div className="flex items-center gap-2">
-                <EditChampionshipModal
-                  championship={championship}
+                <EditChampionshipModal championship={championship} onSuccess={handleChampionshipUpdated} />
+                <ScoringSystemModal
+                  championship={{
+                    id: championshipId,
+                    name: championship.name,
+                    scoring_system_id: championship.scoring_system_id
+                  }}
                   onSuccess={handleChampionshipUpdated}
                 />
               </div>
@@ -722,6 +718,19 @@ export default function ChampionshipDetail({ params }: ChampionshipDetailProps) 
           </div>
         </div>
       </header>
+
+      {/* Breadcrumb */}
+      <div className="container mx-auto px-4 py-2 border-b border-border/40">
+        <Breadcrumb className="text-xs">
+          <BreadcrumbHome href="/pilot" />
+          <BreadcrumbSeparator />
+          <BreadcrumbItem href={`/league/${leagueId}`}>{league.name}</BreadcrumbItem>
+          <BreadcrumbSeparator />
+          <BreadcrumbItem href={`/league/${leagueId}/championships`}>Campeonatos</BreadcrumbItem>
+          <BreadcrumbSeparator />
+          <BreadcrumbItem active>{championship.name}</BreadcrumbItem>
+        </Breadcrumb>
+      </div>
 
       <main className="container mx-auto px-4 py-6 md:py-8 space-y-8">
         {/* Tabs Section */}
@@ -783,7 +792,11 @@ export default function ChampionshipDetail({ params }: ChampionshipDetailProps) 
                     </p>
                     {isOwner && (
                       <ScoringSystemModal
-                        championship={championship}
+                        championship={{
+                          id: championshipId,
+                          name: championship.name,
+                          scoring_system_id: championship.scoring_system_id
+                        }}
                         onSuccess={handleChampionshipUpdated}
                       />
                     )}

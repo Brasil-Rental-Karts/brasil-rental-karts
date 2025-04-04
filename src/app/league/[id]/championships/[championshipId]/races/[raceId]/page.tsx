@@ -45,6 +45,7 @@ import { Loader2 } from "lucide-react"
 import { toast } from "sonner"
 import { BackButton } from "@/components/back-button"
 import { EditRaceModal } from "@/components/edit-race-modal"
+import { Breadcrumb, BreadcrumbHome, BreadcrumbItem, BreadcrumbSeparator } from "@/components/ui/breadcrumb"
 import { 
   AlertDialog,
   AlertDialogAction,
@@ -790,55 +791,63 @@ export default function RaceDetail({ params }: RaceDetailProps) {
               >
                 <ArrowLeft className="h-4 w-4" />
               </Button>
-              <div>
-                <h1 className="text-2xl font-bold">{race.name}</h1>
-                <div className="flex items-center text-sm text-muted-foreground">
-                  <span>{championship.name}</span>
-                  <span className="mx-2">•</span>
-                  <span>
-                    {race.status === 'scheduled' && 'Agendada'}
-                    {race.status === 'completed' && 'Concluída'}
-                    {race.status === 'cancelled' && 'Cancelada'}
-                  </span>
-                </div>
-              </div>
+              <span className="font-medium">Etapa: {race?.name}</span>
             </div>
-            {isOwner && (
-              <div className="flex gap-2">
-                <EditRaceModal
-                  race={race}
-                  onSuccess={handleRaceUpdated}
-                />
-                
-                <AlertDialog>
-                  <AlertDialogTrigger asChild>
-                    <Button variant="destructive" size="icon">
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </AlertDialogTrigger>
-                  <AlertDialogContent>
-                    <AlertDialogHeader>
-                      <AlertDialogTitle>Excluir Etapa</AlertDialogTitle>
-                      <AlertDialogDescription>
-                        Tem certeza que deseja excluir esta etapa? Esta ação não pode ser desfeita
-                        e todos os resultados associados a esta etapa serão perdidos.
-                      </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                      <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                      <AlertDialogAction onClick={deleteRace} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+
+            <div className="flex items-center gap-2">
+              {isOwner && race && (
+                <>
+                  <EditRaceModal 
+                    race={race} 
+                    onSuccess={handleRaceUpdated}
+                  />
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button variant="outline" size="sm" className="gap-1 text-destructive hover:text-destructive">
+                        <Trash2 className="h-4 w-4" />
                         Excluir
-                      </AlertDialogAction>
-                    </AlertDialogFooter>
-                  </AlertDialogContent>
-                </AlertDialog>
-              </div>
-            )}
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Excluir Etapa</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          Tem certeza que deseja excluir esta etapa? Esta ação não pode ser desfeita.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                        <AlertDialogAction 
+                          onClick={deleteRace}
+                          className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                        >
+                          Excluir
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                </>
+              )}
+            </div>
           </div>
         </div>
       </header>
 
-      <main className="container mx-auto px-4 py-6 space-y-8">
+      <div className="container mx-auto px-4 py-2 border-b border-border/40">
+        <Breadcrumb className="text-xs">
+          <BreadcrumbHome href="/pilot" />
+          <BreadcrumbSeparator />
+          <BreadcrumbItem href={`/league/${leagueId}`}>{league?.name || 'Liga'}</BreadcrumbItem>
+          <BreadcrumbSeparator />
+          <BreadcrumbItem href={`/league/${leagueId}/championships`}>Campeonatos</BreadcrumbItem>
+          <BreadcrumbSeparator />
+          <BreadcrumbItem href={`/league/${leagueId}/championships/${championshipId}`}>{championship?.name || 'Campeonato'}</BreadcrumbItem>
+          <BreadcrumbSeparator />
+          <BreadcrumbItem active>{race?.name || 'Etapa'}</BreadcrumbItem>
+        </Breadcrumb>
+      </div>
+
+      <main className="container mx-auto px-4 py-6 md:py-8 space-y-8">
         <Card>
           <CardHeader>
             <CardTitle>Detalhes da Etapa</CardTitle>

@@ -11,6 +11,7 @@ import { Loader2 } from "lucide-react"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { EditLeagueModal } from "@/components/edit-league-modal"
 import { LeagueCalendar } from "@/components/league-calendar"
+import { Breadcrumb, BreadcrumbHome, BreadcrumbItem, BreadcrumbSeparator } from "@/components/ui/breadcrumb"
 
 interface League {
   id: string
@@ -169,6 +170,15 @@ export default function LeagueDashboard({ params }: LeagueDashboardProps) {
           </div>
         </div>
       </header>
+
+      {/* Breadcrumb */}
+      <div className="container mx-auto px-4 py-2 border-b border-border/40">
+        <Breadcrumb className="text-xs">
+          <BreadcrumbHome href="/pilot" />
+          <BreadcrumbSeparator />
+          <BreadcrumbItem active>{league.name}</BreadcrumbItem>
+        </Breadcrumb>
+      </div>
 
       <main className="container mx-auto px-4 py-6 md:py-8 space-y-8">
         {/* Stats Cards */}

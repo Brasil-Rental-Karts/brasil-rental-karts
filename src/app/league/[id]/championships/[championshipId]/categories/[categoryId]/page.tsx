@@ -12,6 +12,7 @@ import { Loader2 } from "lucide-react"
 import { toast } from "sonner"
 import { EditCategoryModal } from "@/components/edit-category-modal"
 import { AddPilotToCategoryModal } from "@/components/add-pilot-to-category-modal"
+import { Breadcrumb, BreadcrumbHome, BreadcrumbItem, BreadcrumbSeparator } from "@/components/ui/breadcrumb"
 
 interface Category {
   id: string
@@ -295,28 +296,42 @@ export default function CategoryDetail({ params }: CategoryDetailProps) {
               >
                 <ArrowLeft className="h-4 w-4" />
               </Button>
-              <span className="font-medium">{category.name}</span>
+              <span className="font-medium">Categoria: {category?.name}</span>
             </div>
-            {isOwner && (
-              <div className="flex gap-2">
-                <EditCategoryModal
-                  category={category}
-                  onSuccess={handleCategoryUpdated}
-                />
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="gap-1.5 text-destructive hover:text-destructive"
-                  onClick={handleDeleteCategory}
-                >
-                  <Trash2 className="h-3.5 w-3.5" />
-                  Excluir
-                </Button>
-              </div>
-            )}
+            <div className="flex items-center gap-2">
+              {isOwner && (
+                <>
+                  <EditCategoryModal category={category!} onSuccess={handleCategoryUpdated} />
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={handleDeleteCategory}
+                    className="gap-1"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                    Excluir
+                  </Button>
+                </>
+              )}
+            </div>
           </div>
         </div>
       </header>
+
+      {/* Breadcrumb */}
+      <div className="container mx-auto px-4 py-2 border-b border-border/40">
+        <Breadcrumb className="text-xs">
+          <BreadcrumbHome href="/pilot" />
+          <BreadcrumbSeparator />
+          <BreadcrumbItem href={`/league/${leagueId}`}>{championship?.league_id ? 'Liga' : ''}</BreadcrumbItem>
+          <BreadcrumbSeparator />
+          <BreadcrumbItem href={`/league/${leagueId}/championships`}>Campeonatos</BreadcrumbItem>
+          <BreadcrumbSeparator />
+          <BreadcrumbItem href={`/league/${leagueId}/championships/${championshipId}`}>{championship?.name}</BreadcrumbItem>
+          <BreadcrumbSeparator />
+          <BreadcrumbItem active>{category?.name}</BreadcrumbItem>
+        </Breadcrumb>
+      </div>
 
       <main className="container mx-auto px-4 py-6 md:py-8 space-y-8">
         {/* Category Details */}

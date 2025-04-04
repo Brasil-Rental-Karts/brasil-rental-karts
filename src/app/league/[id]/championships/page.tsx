@@ -14,6 +14,7 @@ import { EditChampionshipModal } from "@/components/edit-championship-modal"
 import { toast } from "sonner"
 import { format, parseISO } from "date-fns"
 import { ptBR } from "date-fns/locale"
+import { Breadcrumb, BreadcrumbHome, BreadcrumbItem, BreadcrumbSeparator } from "@/components/ui/breadcrumb"
 
 interface Championship {
   id: string
@@ -183,6 +184,17 @@ export default function ChampionshipsPage({ params }: ChampionshipsPageProps) {
           </div>
         </div>
       </header>
+
+      {/* Breadcrumb */}
+      <div className="container mx-auto px-4 py-2 border-b border-border/40">
+        <Breadcrumb className="text-xs">
+          <BreadcrumbHome href="/pilot" />
+          <BreadcrumbSeparator />
+          <BreadcrumbItem href={`/league/${id}`}>{league.name}</BreadcrumbItem>
+          <BreadcrumbSeparator />
+          <BreadcrumbItem active>Campeonatos</BreadcrumbItem>
+        </Breadcrumb>
+      </div>
 
       <main className="container mx-auto px-4 py-6 md:py-8 space-y-8">
         {/* Championships List */}
