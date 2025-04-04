@@ -58,6 +58,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
+import { Skeleton } from "@/components/ui/skeleton"
 
 interface Race {
   id: string
@@ -760,8 +761,141 @@ export default function RaceDetail({ params }: RaceDetailProps) {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      <div className="min-h-screen bg-background">
+        {/* Header Section Skeleton */}
+        <header className="bg-white sticky top-0 z-10 border-b">
+          <div className="container mx-auto px-4 py-4">
+            <div className="flex flex-row items-center justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <Skeleton className="h-9 w-9" />
+                <Skeleton className="h-5 w-32" />
+              </div>
+              <div className="flex gap-2">
+                <Skeleton className="h-8 w-24" />
+                <Skeleton className="h-8 w-8" />
+              </div>
+            </div>
+          </div>
+        </header>
+
+        {/* Breadcrumb Skeleton */}
+        <div className="container mx-auto px-4 py-2 border-b border-border/40">
+          <div className="flex items-center gap-1">
+            <Skeleton className="h-4 w-4" />
+            <Skeleton className="h-4 w-4" />
+            <Skeleton className="h-4 w-24" />
+            <Skeleton className="h-4 w-4" />
+            <Skeleton className="h-4 w-32" />
+            <Skeleton className="h-4 w-4" />
+            <Skeleton className="h-4 w-24" />
+            <Skeleton className="h-4 w-4" />
+            <Skeleton className="h-4 w-32" />
+          </div>
+        </div>
+
+        <main className="container mx-auto px-4 py-6 md:py-8 space-y-8">
+          {/* Race Info Skeleton */}
+          <section>
+            <Card>
+              <CardHeader>
+                <Skeleton className="h-6 w-40" />
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <Skeleton className="h-5 w-full max-w-md" />
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="flex items-center gap-2">
+                    <Skeleton className="h-4 w-4" />
+                    <Skeleton className="h-5 w-32" />
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Skeleton className="h-4 w-4" />
+                    <Skeleton className="h-5 w-32" />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </section>
+
+          {/* Categories Tabs Skeleton */}
+          <section>
+            <Skeleton className="h-6 w-40 mb-4" />
+            <Skeleton className="h-10 w-full max-w-md mb-6" />
+            
+            {/* Category Results Skeleton */}
+            <div className="space-y-6">
+              <Card className="border border-border/40 shadow-none">
+                <CardHeader className="border-b">
+                  <div className="flex justify-between items-center">
+                    <Skeleton className="h-8 w-24" />
+                    <div className="flex gap-2">
+                      <Skeleton className="h-8 w-24" />
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent className="pt-4">
+                  {/* Results Table Skeleton */}
+                  <div className="rounded-md overflow-hidden">
+                    <div className="overflow-x-auto">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>
+                              <Skeleton className="h-4 w-8" />
+                            </TableHead>
+                            <TableHead>
+                              <Skeleton className="h-4 w-16" />
+                            </TableHead>
+                            <TableHead>
+                              <Skeleton className="h-4 w-24" />
+                            </TableHead>
+                            <TableHead>
+                              <Skeleton className="h-4 w-16" />
+                            </TableHead>
+                            <TableHead>
+                              <Skeleton className="h-4 w-16" />
+                            </TableHead>
+                            <TableHead>
+                              <Skeleton className="h-4 w-16" />
+                            </TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {[1, 2, 3].map((i) => (
+                            <TableRow key={i}>
+                              <TableCell>
+                                <Skeleton className="h-6 w-8" />
+                              </TableCell>
+                              <TableCell>
+                                <div className="flex items-center gap-2">
+                                  <Skeleton className="h-8 w-8 rounded-full" />
+                                  <Skeleton className="h-6 w-32" />
+                                </div>
+                              </TableCell>
+                              <TableCell>
+                                <Skeleton className="h-6 w-8" />
+                              </TableCell>
+                              <TableCell>
+                                <Skeleton className="h-6 w-6" />
+                              </TableCell>
+                              <TableCell>
+                                <Skeleton className="h-6 w-6" />
+                              </TableCell>
+                              <TableCell>
+                                <Skeleton className="h-6 w-6" />
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </div>
+                  </div>
+                  
+                </CardContent>
+
+              </Card>
+            </div>
+          </section>
+        </main>
       </div>
     )
   }

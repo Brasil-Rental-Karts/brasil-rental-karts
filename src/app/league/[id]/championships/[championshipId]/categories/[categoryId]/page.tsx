@@ -13,6 +13,7 @@ import { toast } from "sonner"
 import { EditCategoryModal } from "@/components/edit-category-modal"
 import { AddPilotToCategoryModal } from "@/components/add-pilot-to-category-modal"
 import { Breadcrumb, BreadcrumbHome, BreadcrumbItem, BreadcrumbSeparator } from "@/components/ui/breadcrumb"
+import { Skeleton } from "@/components/ui/skeleton"
 
 interface Category {
   id: string
@@ -264,8 +265,100 @@ export default function CategoryDetail({ params }: CategoryDetailProps) {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      <div className="min-h-screen bg-background">
+        {/* Header Section Skeleton */}
+        <header className="bg-white sticky top-0 z-10 border-b">
+          <div className="container mx-auto px-4 py-4">
+            <div className="flex flex-row items-center justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <Skeleton className="h-9 w-9" />
+                <Skeleton className="h-5 w-32" />
+              </div>
+              <div className="flex gap-2">
+                <Skeleton className="h-8 w-24" />
+                <Skeleton className="h-8 w-8" />
+              </div>
+            </div>
+          </div>
+        </header>
+
+        {/* Breadcrumb Skeleton */}
+        <div className="container mx-auto px-4 py-2 border-b border-border/40">
+          <div className="flex items-center gap-1">
+            <Skeleton className="h-4 w-4" />
+            <Skeleton className="h-4 w-4" />
+            <Skeleton className="h-4 w-24" />
+            <Skeleton className="h-4 w-4" />
+            <Skeleton className="h-4 w-32" />
+            <Skeleton className="h-4 w-4" />
+            <Skeleton className="h-4 w-24" />
+            <Skeleton className="h-4 w-4" />
+            <Skeleton className="h-4 w-32" />
+          </div>
+        </div>
+
+        <main className="container mx-auto px-4 py-6 md:py-8 space-y-8">
+          {/* Detalhes da Categoria Skeleton */}
+          <Card>
+            <CardHeader>
+              <Skeleton className="h-6 w-56" />
+              <Skeleton className="h-4 w-72" />
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-1">
+                <Skeleton className="h-4 w-16" />
+                <Skeleton className="h-6 w-32" />
+              </div>
+              
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <div className="flex items-center gap-1">
+                    <Skeleton className="h-4 w-4" />
+                    <Skeleton className="h-4 w-40" />
+                  </div>
+                  <Skeleton className="h-6 w-16" />
+                </div>
+                
+                <div className="space-y-1">
+                  <div className="flex items-center gap-1">
+                    <Skeleton className="h-4 w-4" />
+                    <Skeleton className="h-4 w-32" />
+                  </div>
+                  <Skeleton className="h-6 w-24" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Pilotos Skeleton */}
+          <Card>
+            <CardHeader>
+              <div className="flex justify-between items-center">
+                <div>
+                  <Skeleton className="h-6 w-16" />
+                  <Skeleton className="h-4 w-56" />
+                </div>
+                <Skeleton className="h-9 w-32" />
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                {[1, 2, 3].map((i) => (
+                  <div key={i} className="flex items-center justify-between p-3 border border-border/40 rounded-md">
+                    <div className="flex items-center gap-3">
+                      <Skeleton className="h-10 w-10 rounded-full" />
+                      <div>
+                        <Skeleton className="h-5 w-32 mb-1" />
+                        <Skeleton className="h-4 w-48" />
+                      </div>
+                    </div>
+                    <Skeleton className="h-8 w-8" />
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        </main>
       </div>
     )
   }

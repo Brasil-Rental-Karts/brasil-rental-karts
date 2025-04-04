@@ -230,12 +230,12 @@ export function ScoringSystemModal({ championship, onSuccess }: ScoringSystemMod
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button variant="outline" size="sm" className="gap-1.5">
+        <Button variant="ghost" size="sm" className="gap-1.5 text-primary hover:text-primary hover:bg-primary/10 border border-primary/20">
           <Edit className="h-3.5 w-3.5" />
-          Sistema de Pontuação
+          <span className="hidden sm:inline">Alterar</span>
         </Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-[500px]">
+      <DialogContent className="sm:max-w-[550px]">
         <DialogHeader>
           <DialogTitle>Sistema de Pontuação</DialogTitle>
         </DialogHeader>
@@ -277,22 +277,24 @@ export function ScoringSystemModal({ championship, onSuccess }: ScoringSystemMod
                   <Card>
                     <CardContent className="pt-6">
                       <div className="space-y-4">
-                        <div className="grid grid-cols-2 gap-4">
-                          {scoringSystems
-                            .find(s => s.id === selectedSystem)
-                            ?.points && 
-                            Object.entries(scoringSystems.find(s => s.id === selectedSystem)!.points)
-                              .sort((a, b) => parseInt(a[0]) - parseInt(b[0]))
-                              .map(([position, points]) => (
-                                <div key={position} className="flex justify-between items-center">
-                                  <span className="text-sm font-medium">Posição {position}</span>
-                                  <span className="text-sm">{points} pontos</span>
-                                </div>
-                              ))
-                          }
+                        <div className="p-3 bg-muted/30 rounded-md">
+                          <div className="grid grid-cols-5 sm:grid-cols-6 gap-y-3 gap-x-2">
+                            {scoringSystems
+                              .find(s => s.id === selectedSystem)
+                              ?.points && 
+                              Object.entries(scoringSystems.find(s => s.id === selectedSystem)!.points)
+                                .sort((a, b) => parseInt(a[0]) - parseInt(b[0]))
+                                .map(([position, points]) => (
+                                  <div key={position} className="flex items-center gap-1 text-sm">
+                                    <span className="font-bold text-primary/80 bg-primary/10 rounded-full w-5 h-5 flex items-center justify-center text-xs">{position}</span>
+                                    <span className="font-medium">{points}</span>
+                                  </div>
+                                ))
+                            }
+                          </div>
                         </div>
                         {scoringSystems.find(s => s.id === selectedSystem)?.description && (
-                          <div className="text-xs text-muted-foreground mt-2">
+                          <div className="text-sm text-muted-foreground mt-2 p-3 border border-border/40 rounded-md">
                             {scoringSystems.find(s => s.id === selectedSystem)?.description}
                           </div>
                         )}
@@ -343,7 +345,7 @@ export function ScoringSystemModal({ championship, onSuccess }: ScoringSystemMod
                 />
               </div>
               
-              <div className="space-y-2">
+              <div className="space-y-3">
                 <div className="flex items-center justify-between">
                   <Label>Pontuação por Posição</Label>
                   <Button 
@@ -358,30 +360,33 @@ export function ScoringSystemModal({ championship, onSuccess }: ScoringSystemMod
                   </Button>
                 </div>
                 
-                <div className="space-y-2">
-                  {sortedPositions.map((item) => (
-                    <div key={item.position} className="flex items-center gap-2">
-                      <div className="flex-shrink-0 w-24">
-                        <span className="text-sm">Posição {item.position}</span>
+                <div className="bg-muted/30 p-3 rounded-md">
+                  <div className="grid gap-2 max-h-[250px] overflow-y-auto pr-2">
+                    {sortedPositions.map((item) => (
+                      <div key={item.position} className="flex items-center gap-2">
+                        <div className="flex-shrink-0 w-20 flex items-center gap-1">
+                          <span className="font-bold text-primary/80 bg-primary/10 rounded-full w-5 h-5 flex items-center justify-center text-xs">{item.position}</span>
+                          <span className="text-xs">Posição</span>
+                        </div>
+                        <Input
+                          type="number"
+                          min="0"
+                          value={item.points}
+                          onChange={(e) => updatePointsValue(item.position, Number(e.target.value))}
+                          className="h-8"
+                        />
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="icon"
+                          onClick={() => removePositionRow(item.position)}
+                          className="h-8 w-8"
+                        >
+                          <Minus className="h-3.5 w-3.5" />
+                        </Button>
                       </div>
-                      <Input
-                        type="number"
-                        min="0"
-                        value={item.points}
-                        onChange={(e) => updatePointsValue(item.position, Number(e.target.value))}
-                        className="h-8"
-                      />
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="icon"
-                        onClick={() => removePositionRow(item.position)}
-                        className="h-8 w-8"
-                      >
-                        <Minus className="h-3.5 w-3.5" />
-                      </Button>
-                    </div>
-                  ))}
+                    ))}
+                  </div>
                 </div>
               </div>
               

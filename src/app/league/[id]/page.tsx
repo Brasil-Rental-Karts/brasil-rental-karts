@@ -10,8 +10,9 @@ import Link from "next/link"
 import { Loader2 } from "lucide-react"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { EditLeagueModal } from "@/components/edit-league-modal"
-import { LeagueCalendar } from "@/components/league-calendar"
+import { UnifiedCalendar } from "@/components/unified-calendar"
 import { Breadcrumb, BreadcrumbHome, BreadcrumbItem, BreadcrumbSeparator } from "@/components/ui/breadcrumb"
+import { Skeleton } from "@/components/ui/skeleton"
 
 interface League {
   id: string
@@ -36,6 +37,7 @@ export default function LeagueDashboard({ params }: LeagueDashboardProps) {
   const supabase = createClientComponentClient()
   const [id, setId] = useState<string>("")
   const [championships, setChampionships] = useState<any[]>([])
+  const [uniquePilotsCount, setUniquePilotsCount] = useState<number>(0)
 
   useEffect(() => {
     const resolveParams = async () => {
@@ -77,6 +79,9 @@ export default function LeagueDashboard({ params }: LeagueDashboardProps) {
         
         // Fetch championships
         fetchChampionships()
+        
+        // Fetch unique pilots count
+        fetchUniquePilotsCount()
       } catch (error) {
         console.error("Erro ao buscar liga:", error)
         router.push("/login")
@@ -106,6 +111,62 @@ export default function LeagueDashboard({ params }: LeagueDashboardProps) {
     }
   }
 
+  const fetchUniquePilotsCount = async () => {
+    if (!id) return
+
+    try {
+      // Primeiro, obter todas as categorias de todos os campeonatos da liga
+      const { data: championshipsData, error: championshipsError } = await supabase
+        .from("championships")
+        .select("id")
+        .eq("league_id", id)
+      
+      if (championshipsError) throw championshipsError
+      
+      if (!championshipsData || championshipsData.length === 0) {
+        setUniquePilotsCount(0)
+        return
+      }
+      
+      const championshipIds = championshipsData.map(c => c.id)
+      
+      // Agora, obter todas as categorias desses campeonatos
+      const { data: categoriesData, error: categoriesError } = await supabase
+        .from("categories")
+        .select("id")
+        .in("championship_id", championshipIds)
+      
+      if (categoriesError) throw categoriesError
+      
+      if (!categoriesData || categoriesData.length === 0) {
+        setUniquePilotsCount(0)
+        return
+      }
+      
+      const categoryIds = categoriesData.map(c => c.id)
+      
+      // Finalmente, obter todos os pilotos únicos dessas categorias
+      const { data: pilotsData, error: pilotsError } = await supabase
+        .from("category_pilots")
+        .select("pilot_id")
+        .in("category_id", categoryIds)
+      
+      if (pilotsError) throw pilotsError
+      
+      if (!pilotsData) {
+        setUniquePilotsCount(0)
+        return
+      }
+      
+      // Contar pilotos únicos usando Set para eliminar duplicatas
+      const uniquePilotsSet = new Set(pilotsData.map(p => p.pilot_id))
+      setUniquePilotsCount(uniquePilotsSet.size)
+    } catch (error) {
+      console.error("Erro ao buscar contagem de pilotos:", error)
+      setUniquePilotsCount(0)
+    }
+  }
+
   const handleLeagueUpdated = async () => {
     // Recarregar os dados da liga após atualização
     if (!id) return
@@ -120,6 +181,10 @@ export default function LeagueDashboard({ params }: LeagueDashboardProps) {
 
       if (error) throw error
       setLeague(leagueData)
+      
+      // Recarregar contagens
+      await fetchChampionships()
+      await fetchUniquePilotsCount()
     } catch (error) {
       console.error("Erro ao atualizar dados da liga:", error)
     } finally {
@@ -129,8 +194,110 @@ export default function LeagueDashboard({ params }: LeagueDashboardProps) {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      <div className="min-h-screen bg-background">
+        {/* Header Section Skeleton */}
+        <header className="bg-white sticky top-0 z-10 border-b">
+          <div className="container mx-auto px-4 py-4">
+            <div className="flex flex-row items-center justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <Skeleton className="h-9 w-9" />
+                <Skeleton className="h-10 w-10 rounded-full" />
+                <Skeleton className="h-5 w-32" />
+              </div>
+              <Skeleton className="h-8 w-16" />
+            </div>
+          </div>
+        </header>
+
+        {/* Breadcrumb Skeleton */}
+        <div className="container mx-auto px-4 py-2 border-b border-border/40">
+          <div className="flex items-center gap-1">
+            <Skeleton className="h-4 w-4" />
+            <Skeleton className="h-4 w-4" />
+            <Skeleton className="h-4 w-32" />
+          </div>
+        </div>
+
+        <main className="container mx-auto px-4 py-6 md:py-8 space-y-8">
+          {/* Stats Cards Skeleton */}
+          <section>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <Card className="border border-border/40 shadow-none">
+                <CardHeader className="space-y-0 pb-2">
+                  <div className="flex items-center justify-between">
+                    <Skeleton className="h-4 w-28" />
+                    <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
+                      <Trophy className="h-4 w-4 text-primary/30" />
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <Skeleton className="h-8 w-12 mb-1" />
+                  <Skeleton className="h-3 w-32" />
+                </CardContent>
+              </Card>
+
+              <Card className="border border-border/40 shadow-none">
+                <CardHeader className="space-y-0 pb-2">
+                  <div className="flex items-center justify-between">
+                    <Skeleton className="h-4 w-20" />
+                    <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
+                      <Users className="h-4 w-4 text-primary/30" />
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <Skeleton className="h-8 w-12 mb-1" />
+                  <Skeleton className="h-3 w-32" />
+                </CardContent>
+              </Card>
+            </div>
+          </section>
+
+          {/* Calendar Section Skeleton - The LeagueCalendar component handles its own loading state */}
+          <section>
+            <Card className="border border-border/40 shadow-none">
+              <CardHeader>
+                <Skeleton className="h-6 w-48" />
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-2">
+                  {[1, 2, 3].map((i) => (
+                    <div key={i} className="flex items-center gap-4 p-3 rounded-lg border border-border/40">
+                      <Skeleton className="h-6 w-20 rounded-full" />
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-1">
+                          <Skeleton className="h-5 w-32" />
+                          <Skeleton className="h-4 w-20 rounded-full" />
+                        </div>
+                        <Skeleton className="h-4 w-48" />
+                      </div>
+                      <Skeleton className="h-4 w-24" />
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          </section>
+
+          {/* Quick Actions Section Skeleton */}
+          <section>
+            <Skeleton className="h-7 w-48 mb-4" />
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {[1, 2, 3].map((i) => (
+                <Card key={i} className="border border-border/40 shadow-none">
+                  <CardContent className="p-6 flex items-center gap-4">
+                    <Skeleton className="h-10 w-10 rounded-full" />
+                    <div>
+                      <Skeleton className="h-5 w-40 mb-1" />
+                      <Skeleton className="h-4 w-48" />
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </section>
+        </main>
       </div>
     )
   }
@@ -209,7 +376,7 @@ export default function LeagueDashboard({ params }: LeagueDashboardProps) {
                 </div>
               </CardHeader>
               <CardContent>
-                <p className="text-2xl font-semibold">0</p>
+                <p className="text-2xl font-semibold">{uniquePilotsCount}</p>
                 <p className="text-xs text-muted-foreground mt-1">Pilotos registrados</p>
               </CardContent>
             </Card>
@@ -218,7 +385,7 @@ export default function LeagueDashboard({ params }: LeagueDashboardProps) {
 
         {/* Calendar Section */}
         <section>
-          <LeagueCalendar leagueId={id} />
+          <UnifiedCalendar leagueId={id} showAllStatuses={true} title="Calendário de Provas" />
         </section>
 
         {/* Quick Actions Section */}

@@ -116,15 +116,7 @@ export function Header() {
           <Link href="/" className="flex items-center gap-2">
             <img src="/brk_logo.svg" alt="Brasil Rental Karts" className="h-16 w-16" />
           </Link>
-          <nav className="hidden md:flex items-center gap-6">
-            <Link 
-              href="/" 
-              className={`text-sm font-medium transition-colors hover:text-primary ${
-                pathname === '/' ? 'text-primary' : 'text-muted-foreground'
-              }`}
-            >
-              Início
-            </Link>
+          <nav className="flex items-center gap-6">
             <Link
               href="/leagues"
               className={`text-sm font-medium transition-colors hover:text-primary ${

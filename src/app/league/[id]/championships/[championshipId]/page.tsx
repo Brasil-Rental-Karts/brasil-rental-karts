@@ -29,6 +29,7 @@ import {
   MapPin,
   Route
 } from "lucide-react"
+import { Skeleton } from "@/components/ui/skeleton"
 
 interface Championship {
   id: string
@@ -667,8 +668,115 @@ export default function ChampionshipDetail({ params }: ChampionshipDetailProps) 
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      <div className="min-h-screen bg-background">
+        {/* Header Section Skeleton */}
+        <header className="bg-white sticky top-0 z-10 border-b">
+          <div className="container mx-auto px-4 py-4">
+            <div className="flex flex-row items-center justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <Skeleton className="h-9 w-9" />
+                <Skeleton className="h-10 w-10 rounded-full" />
+                <Skeleton className="h-5 w-40" />
+              </div>
+              <div className="flex gap-2">
+                <Skeleton className="h-8 w-24" />
+                <Skeleton className="h-8 w-8" />
+              </div>
+            </div>
+          </div>
+        </header>
+
+        {/* Breadcrumb Skeleton */}
+        <div className="container mx-auto px-4 py-2 border-b border-border/40">
+          <div className="flex items-center gap-1">
+            <Skeleton className="h-4 w-4" />
+            <Skeleton className="h-4 w-4" />
+            <Skeleton className="h-4 w-24" />
+            <Skeleton className="h-4 w-4" />
+            <Skeleton className="h-4 w-24" />
+            <Skeleton className="h-4 w-4" />
+            <Skeleton className="h-4 w-32" />
+          </div>
+        </div>
+
+        <main className="container mx-auto px-4 py-6 md:py-8 space-y-8">
+          {/* Championship Info Skeleton */}
+
+          {/* Tabs Skeleton */}
+          <section>
+            <div className="space-y-6">
+              <Skeleton className="h-10 w-full max-w-md mb-6" />
+              
+              {/* Tab Content Skeleton - Overview */}
+              <div className="space-y-8">
+                {/* Detalhes do Campeonato Skeleton */}
+                <Card>
+                  <CardHeader>
+                    <Skeleton className="h-6 w-56" />
+                    <Skeleton className="h-4 w-72" />
+                  </CardHeader>
+                  <CardContent className="space-y-6">
+                    <div className="space-y-1">
+                      <Skeleton className="h-4 w-16" />
+                      <Skeleton className="h-5 w-48" />
+                    </div>
+                    <div className="space-y-1">
+                      <Skeleton className="h-4 w-24" />
+                      <Skeleton className="h-5 w-64" />
+                    </div>
+                    <div className="grid grid-cols-2 gap-6">
+                      <div className="space-y-1">
+                        <Skeleton className="h-4 w-28" />
+                        <Skeleton className="h-5 w-32" />
+                      </div>
+                      <div className="space-y-1">
+                        <Skeleton className="h-4 w-28" />
+                        <Skeleton className="h-5 w-32" />
+                      </div>
+                    </div>
+                    <div className="space-y-1">
+                      <Skeleton className="h-4 w-32" />
+                      <Skeleton className="h-5 w-16" />
+                    </div>
+                    <div className="space-y-1">
+                      <Skeleton className="h-4 w-32" />
+                      <div className="grid grid-cols-4 gap-2">
+                        <Skeleton className="h-5 w-16" />
+                        <Skeleton className="h-5 w-16" />
+                        <Skeleton className="h-5 w-16" />
+                        <Skeleton className="h-5 w-16" />
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Estatísticas Skeleton */}
+                <Card>
+                  <CardHeader>
+                    <Skeleton className="h-6 w-32" />
+                    <Skeleton className="h-4 w-48" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="grid grid-cols-3 gap-4">
+                      <div className="space-y-1">
+                        <Skeleton className="h-4 w-24" />
+                        <Skeleton className="h-8 w-8" />
+                      </div>
+                      <div className="space-y-1">
+                        <Skeleton className="h-4 w-16" />
+                        <Skeleton className="h-8 w-8" />
+                      </div>
+                      <div className="space-y-1">
+                        <Skeleton className="h-4 w-20" />
+                        <Skeleton className="h-8 w-8" />
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            </div>
+          </section>
+        </main>
       </div>
     )
   }
@@ -702,19 +810,6 @@ export default function ChampionshipDetail({ params }: ChampionshipDetailProps) 
               </Avatar>
               <span className="font-medium">{championship.name}</span>
             </div>
-            {isOwner && (
-              <div className="flex items-center gap-2">
-                <EditChampionshipModal championship={championship} onSuccess={handleChampionshipUpdated} />
-                <ScoringSystemModal
-                  championship={{
-                    id: championshipId,
-                    name: championship.name,
-                    scoring_system_id: championship.scoring_system_id
-                  }}
-                  onSuccess={handleChampionshipUpdated}
-                />
-              </div>
-            )}
           </div>
         </div>
       </header>
@@ -786,36 +881,41 @@ export default function ChampionshipDetail({ params }: ChampionshipDetailProps) 
                 </div>
                 <div>
                   <Label className="text-xs">Sistema de Pontuação</Label>
-                  <div className="flex justify-between items-center">
-                    <p className="text-sm">
-                      {scoringSystem ? scoringSystem.name : "Não definido"}
-                    </p>
-                    {isOwner && (
-                      <ScoringSystemModal
-                        championship={{
-                          id: championshipId,
-                          name: championship.name,
-                          scoring_system_id: championship.scoring_system_id
-                        }}
-                        onSuccess={handleChampionshipUpdated}
-                      />
-                    )}
-                  </div>
-                  {scoringSystem && (
-                    <div className="mt-2 grid grid-cols-4 gap-2">
-                      {Object.entries(scoringSystem.points)
-                        .sort((a, b) => parseInt(a[0]) - parseInt(b[0]))
-                        .slice(0, 8)
-                        .map(([position, points]) => (
-                          <div key={position} className="text-xs text-muted-foreground">
-                            P{position}: <span className="font-medium">{points}</span>
-                          </div>
-                        ))}
-                      {Object.keys(scoringSystem.points).length > 8 && (
-                        <div className="text-xs text-muted-foreground">...</div>
+                  <div className="flex flex-col">
+                    <div className="flex justify-between items-center mb-2">
+                      <p className="text-sm font-medium">
+                        {scoringSystem ? scoringSystem.name : "Não definido"}
+                      </p>
+                      {isOwner && (
+                        <ScoringSystemModal
+                          championship={{
+                            id: championshipId,
+                            name: championship.name,
+                            scoring_system_id: championship.scoring_system_id
+                          }}
+                          onSuccess={handleChampionshipUpdated}
+                        />
                       )}
                     </div>
-                  )}
+                    {scoringSystem && (
+                      <div className="mt-2 p-3 bg-muted/30 rounded-md">
+                        <div className="grid grid-cols-5 sm:grid-cols-6 gap-2">
+                          {Object.entries(scoringSystem.points)
+                            .sort((a, b) => parseInt(a[0]) - parseInt(b[0]))
+                            .slice(0, 12)
+                            .map(([position, points]) => (
+                              <div key={position} className="flex items-center gap-1 text-xs">
+                                <span className="font-bold text-primary/80 bg-primary/10 rounded-full w-5 h-5 flex items-center justify-center">{position}</span>
+                                <span className="font-medium">{points}</span>
+                              </div>
+                            ))}
+                          {Object.keys(scoringSystem.points).length > 12 && (
+                            <div className="text-xs text-muted-foreground flex items-center">...</div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 </div>
               </CardContent>
             </Card>

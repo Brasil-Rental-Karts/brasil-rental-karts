@@ -15,6 +15,7 @@ import { toast } from "sonner"
 import { format, parseISO } from "date-fns"
 import { ptBR } from "date-fns/locale"
 import { Breadcrumb, BreadcrumbHome, BreadcrumbItem, BreadcrumbSeparator } from "@/components/ui/breadcrumb"
+import { Skeleton } from "@/components/ui/skeleton"
 
 interface Championship {
   id: string
@@ -149,8 +150,68 @@ export default function ChampionshipsPage({ params }: ChampionshipsPageProps) {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      <div className="min-h-screen bg-background">
+        {/* Header Section Skeleton */}
+        <header className="bg-white sticky top-0 z-10 border-b">
+          <div className="container mx-auto px-4 py-4">
+            <div className="flex flex-row items-center justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <Skeleton className="h-9 w-9" />
+                <Skeleton className="h-5 w-32" />
+              </div>
+              <Skeleton className="h-8 w-24" />
+            </div>
+          </div>
+        </header>
+
+        {/* Breadcrumb Skeleton */}
+        <div className="container mx-auto px-4 py-2 border-b border-border/40">
+          <div className="flex items-center gap-1">
+            <Skeleton className="h-4 w-4" />
+            <Skeleton className="h-4 w-4" />
+            <Skeleton className="h-4 w-24" />
+            <Skeleton className="h-4 w-4" />
+            <Skeleton className="h-4 w-24" />
+          </div>
+        </div>
+
+        <main className="container mx-auto px-4 py-6 md:py-8 space-y-8">
+          {/* Championships List Skeleton */}
+          <section>
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+              {[1, 2, 3].map((i) => (
+                <Card key={i} className="border border-border/40 shadow-none">
+                  <CardHeader className="pb-3">
+                    <div className="flex items-start justify-between">
+                      <div className="flex items-center gap-3">
+                        <Skeleton className="h-10 w-10 rounded-full" />
+                        <div>
+                          <Skeleton className="h-5 w-32 mb-1" />
+                          <Skeleton className="h-4 w-16" />
+                        </div>
+                      </div>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="pb-3">
+                    <Skeleton className="h-4 w-full mb-2" />
+                    <Skeleton className="h-4 w-3/4" />
+                    <div className="mt-3 flex items-center gap-2">
+                      <Skeleton className="h-4 w-4" />
+                      <Skeleton className="h-4 w-40" />
+                    </div>
+                  </CardContent>
+                  <CardFooter className="pt-2 flex justify-between">
+                    <Skeleton className="h-8 w-24" />
+                    <div className="flex gap-2">
+                      <Skeleton className="h-8 w-8" />
+                      <Skeleton className="h-8 w-8" />
+                    </div>
+                  </CardFooter>
+                </Card>
+              ))}
+            </div>
+          </section>
+        </main>
       </div>
     )
   }
