@@ -77,6 +77,7 @@ interface Race {
   status: "scheduled" | "completed" | "cancelled"
   created_at: string
   updated_at: string
+  double_points: boolean
 }
 
 interface ScoringSystem {
@@ -114,6 +115,7 @@ interface PilotStanding {
   pilot_name: string
   pilot_avatar: string | null
   total_points: number
+  initial_points: number
   positions: Record<string, number | null> // race_id -> position
   fastest_laps: number
   dnfs: number
@@ -420,6 +422,7 @@ export default function ChampionshipDetail({ params }: ChampionshipDetailProps) 
           .from("category_pilots")
           .select(`
             pilot_id,
+            initial_points,
             pilot_profiles (
               id,
               name,
@@ -441,7 +444,8 @@ export default function ChampionshipDetail({ params }: ChampionshipDetailProps) 
           pilot_id: entry.pilot_id,
           pilot_name: (entry.pilot_profiles as any).name,
           pilot_avatar: (entry.pilot_profiles as any).avatar_url,
-          total_points: 0,
+          total_points: entry.initial_points || 0, // Iniciar com a pontuação inicial
+          initial_points: entry.initial_points || 0, // Armazenar a pontuação inicial
           positions: {},
           fastest_laps: 0,
           dnfs: 0,
@@ -451,7 +455,7 @@ export default function ChampionshipDetail({ params }: ChampionshipDetailProps) 
         // 3. Obter todas as corridas do campeonato
         const { data: racesData, error: racesError } = await supabase
           .from("races")
-          .select("id")
+          .select("*")
           .eq("championship_id", championshipId)
         
         if (racesError) {
@@ -490,6 +494,9 @@ export default function ChampionshipDetail({ params }: ChampionshipDetailProps) 
           }
           
           if (!resultsData || resultsData.length === 0) continue
+          
+          // Verificar se a corrida tem pontuação em dobro
+          const isDoublePoints = race.double_points || false;
           
           // Agrupar resultados por bateria
           const heatResults: Record<number, typeof resultsData> = {};
@@ -532,7 +539,11 @@ export default function ChampionshipDetail({ params }: ChampionshipDetailProps) 
               // Calcular pontos se tiver posição e não estiver desqualificado
               if (result.position !== null && !result.dq) {
                 const positionStr = result.position.toString()
-                const points = scoringSystem[positionStr] || 0
+                const basePoints = scoringSystem[positionStr] || 0
+                
+                // Aplicar pontuação em dobro se a corrida tiver esse atributo
+                const points = isDoublePoints ? basePoints * 2 : basePoints
+                
                 standingsByCategory[category.id][pilotIndex].total_points += points
               }
             }
@@ -567,7 +578,7 @@ export default function ChampionshipDetail({ params }: ChampionshipDetailProps) 
       // Obter todas as corridas do campeonato
       const { data: racesData, error: racesError } = await supabase
         .from("races")
-        .select("id, name, date")
+        .select("*")
         .eq("championship_id", championshipId)
         .order("date", { ascending: true })
       
@@ -615,7 +626,10 @@ export default function ChampionshipDetail({ params }: ChampionshipDetailProps) 
           let points = 0;
           if (scoringSystem && result.position !== null && !result.dq) {
             const positionStr = result.position.toString();
-            points = scoringSystem.points[positionStr] || 0;
+            const basePoints = scoringSystem.points[positionStr] || 0;
+            
+            // Aplicar pontuação em dobro se a corrida tiver esse atributo
+            points = race.double_points ? basePoints * 2 : basePoints;
           }
           
           // Adicionar resultado formatado ao array
@@ -1352,6 +1366,9 @@ export default function ChampionshipDetail({ params }: ChampionshipDetailProps) 
                                       </td>
                                       <td className="px-4 py-3 whitespace-nowrap text-sm text-center font-semibold">
                                         {standing.total_points}
+                                        {standing.initial_points > 0 && (
+                                          <span className="text-xs font-normal text-primary ml-1">(+{standing.initial_points})</span>
+                                        )}
                                       </td>
                                       <td className="px-4 py-3 whitespace-nowrap text-sm text-center hidden md:table-cell">
                                         {standing.fastest_laps}

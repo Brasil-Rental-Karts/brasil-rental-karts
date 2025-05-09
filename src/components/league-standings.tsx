@@ -28,6 +28,7 @@ interface PilotStanding {
   pilot_name: string;
   pilot_avatar: string | null;
   total_points: number;
+  initial_points: number;
   positions: Record<string, number | null>;
   fastest_laps: number;
   dnfs: number;
@@ -154,6 +155,7 @@ export function LeagueStandings({ leagueId }: LeagueStandingsProps) {
           .from("category_pilots")
           .select(`
             pilot_id,
+            initial_points,
             pilot_profiles (
               id,
               name,
@@ -177,7 +179,8 @@ export function LeagueStandings({ leagueId }: LeagueStandingsProps) {
           pilot_id: entry.pilot_id,
           pilot_name: (entry.pilot_profiles as any).name,
           pilot_avatar: (entry.pilot_profiles as any).avatar_url,
-          total_points: 0,
+          total_points: entry.initial_points || 0,
+          initial_points: entry.initial_points || 0,
           positions: {},
           fastest_laps: 0,
           dnfs: 0,
@@ -187,7 +190,7 @@ export function LeagueStandings({ leagueId }: LeagueStandingsProps) {
         // 3. Obter todas as corridas do campeonato
         const { data: racesData, error: racesError } = await supabase
           .from("races")
-          .select("id")
+          .select("*")
           .eq("championship_id", selectedChampionship);
         
         if (racesError) {
@@ -202,6 +205,9 @@ export function LeagueStandings({ leagueId }: LeagueStandingsProps) {
         
         // 4. Para cada corrida, buscar os resultados dos pilotos
         for (const race of racesData) {
+          // Verificar se a corrida tem pontuação em dobro
+          const isDoublePoints = race.double_points || false;
+          
           // Buscar resultados da corrida para a categoria
           const { data: resultsData, error: resultsError } = await supabase
             .from("race_results")
@@ -258,7 +264,11 @@ export function LeagueStandings({ leagueId }: LeagueStandingsProps) {
               // Calcular pontos se tiver posição e não estiver desqualificado
               if (result.position !== null && !result.dq) {
                 const positionStr = result.position.toString();
-                const points = scoringSystem.points[positionStr] || 0;
+                const basePoints = scoringSystem.points[positionStr] || 0;
+                
+                // Aplicar pontuação em dobro se a corrida tiver esse atributo
+                const points = isDoublePoints ? basePoints * 2 : basePoints;
+                
                 standings[pilotIndex].total_points += points;
               }
             }
@@ -399,6 +409,9 @@ export function LeagueStandings({ leagueId }: LeagueStandingsProps) {
                               <td className="px-4 py-3 whitespace-nowrap text-center">
                                 <span className="text-sm font-semibold">
                                   {pilot.total_points}
+                                  {pilot.initial_points > 0 && (
+                                    <span className="text-xs font-normal text-primary ml-1">(+{pilot.initial_points})</span>
+                                  )}
                                 </span>
                               </td>
                               <td className="px-4 py-3 whitespace-nowrap text-center hidden md:table-cell">

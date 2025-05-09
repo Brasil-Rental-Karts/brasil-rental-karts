@@ -58,6 +58,9 @@ export function AddPilotToCategoryModal({
   const [newPilotEmail, setNewPilotEmail] = useState("")
   const [selectedPilotId, setSelectedPilotId] = useState<string | null>(null)
   
+  // Campo para pontuação inicial
+  const [initialPoints, setInitialPoints] = useState("0")
+  
   const supabase = createClientComponentClient()
   
   // Verificar se atingiu o limite de pilotos
@@ -109,6 +112,7 @@ export function AddPilotToCategoryModal({
       setNewPilotName("")
       setNewPilotEmail("")
       setSelectedPilotId(null)
+      setInitialPoints("0")
       setActiveTab("search")
     }
   }
@@ -117,6 +121,13 @@ export function AddPilotToCategoryModal({
   const handleAddExistingPilot = async () => {
     if (!selectedPilotId) {
       toast.error("Selecione um piloto para adicionar à categoria")
+      return
+    }
+    
+    // Validar pontuação inicial
+    const initialPointsValue = parseFloat(initialPoints)
+    if (isNaN(initialPointsValue) || initialPointsValue < 0) {
+      toast.error("Informe um valor válido para a pontuação inicial")
       return
     }
     
@@ -142,7 +153,8 @@ export function AddPilotToCategoryModal({
         .from("category_pilots")
         .insert({
           category_id: categoryId,
-          pilot_id: selectedPilotId
+          pilot_id: selectedPilotId,
+          initial_points: initialPointsValue
         })
       
       if (error) throw error
@@ -162,6 +174,13 @@ export function AddPilotToCategoryModal({
   const handleCreateAndAddPilot = async () => {
     if (!newPilotName || !newPilotEmail) {
       toast.error("Nome e e-mail são obrigatórios")
+      return
+    }
+    
+    // Validar pontuação inicial
+    const initialPointsValue = parseFloat(initialPoints)
+    if (isNaN(initialPointsValue) || initialPointsValue < 0) {
+      toast.error("Informe um valor válido para a pontuação inicial")
       return
     }
     
@@ -195,7 +214,8 @@ export function AddPilotToCategoryModal({
         .from("category_pilots")
         .insert({
           category_id: categoryId,
-          pilot_id: pilotId
+          pilot_id: pilotId,
+          initial_points: initialPointsValue
         })
       
       if (addError) throw addError
@@ -306,6 +326,22 @@ export function AddPilotToCategoryModal({
               )}
             </div>
             
+            <div className="space-y-2 mt-4">
+              <Label htmlFor="initial-points-search">Pontuação Inicial</Label>
+              <Input
+                id="initial-points-search"
+                type="number"
+                step="0.01"
+                min="0"
+                value={initialPoints}
+                onChange={(e) => setInitialPoints(e.target.value)}
+                placeholder="Ex: 10.5"
+              />
+              <p className="text-xs text-muted-foreground">
+                Opcional: adicione uma pontuação inicial caso o campeonato já tenha começado
+              </p>
+            </div>
+            
             <DialogFooter>
               <Button 
                 variant="outline" 
@@ -361,6 +397,22 @@ export function AddPilotToCategoryModal({
                   onChange={(e) => setNewPilotEmail(e.target.value)}
                 />
               </div>
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="initial-points-create">Pontuação Inicial</Label>
+              <Input
+                id="initial-points-create"
+                type="number"
+                step="0.01"
+                min="0"
+                value={initialPoints}
+                onChange={(e) => setInitialPoints(e.target.value)}
+                placeholder="Ex: 10.5"
+              />
+              <p className="text-xs text-muted-foreground">
+                Opcional: adicione uma pontuação inicial caso o campeonato já tenha começado
+              </p>
             </div>
             
             <DialogFooter>

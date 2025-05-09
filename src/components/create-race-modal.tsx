@@ -24,6 +24,7 @@ import {
 } from "@/components/ui/select"
 import { CalendarIcon, Loader2, Plus } from "lucide-react"
 import { toast } from "sonner"
+import { Checkbox } from "@/components/ui/checkbox"
 
 interface CreateRaceModalProps {
   championshipId: string
@@ -39,6 +40,7 @@ export function CreateRaceModal({ championshipId, onSuccess }: CreateRaceModalPr
   const [location, setLocation] = useState("")
   const [trackLayout, setTrackLayout] = useState("")
   const [status, setStatus] = useState<"scheduled" | "completed" | "cancelled">("scheduled")
+  const [doublePoints, setDoublePoints] = useState(false)
   const [loading, setLoading] = useState(false)
   const supabase = createClientComponentClient()
 
@@ -81,7 +83,8 @@ export function CreateRaceModal({ championshipId, onSuccess }: CreateRaceModalPr
             date: combinedDate,
             location,
             track_layout: trackLayout,
-            status
+            status,
+            double_points: doublePoints
           }
         ])
 
@@ -95,6 +98,7 @@ export function CreateRaceModal({ championshipId, onSuccess }: CreateRaceModalPr
       setLocation("")
       setTrackLayout("")
       setStatus("scheduled")
+      setDoublePoints(false)
       setOpen(false)
       onSuccess()
     } catch (error) {
@@ -194,6 +198,19 @@ export function CreateRaceModal({ championshipId, onSuccess }: CreateRaceModalPr
                 <SelectItem value="cancelled">Cancelada</SelectItem>
               </SelectContent>
             </Select>
+          </div>
+          <div className="space-y-2">
+            <div className="flex items-center space-x-2">
+              <Checkbox 
+                id="double-points" 
+                checked={doublePoints}
+                onCheckedChange={(checked) => setDoublePoints(checked as boolean)}
+              />
+              <Label htmlFor="double-points">Pontuação em dobro</Label>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Marque esta opção para calcular os pontos em dobro nesta etapa
+            </p>
           </div>
           <DialogFooter>
             <Button variant="outline" type="button" onClick={() => setOpen(false)}>

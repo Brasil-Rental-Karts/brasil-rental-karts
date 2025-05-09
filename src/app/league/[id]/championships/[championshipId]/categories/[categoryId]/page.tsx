@@ -14,6 +14,7 @@ import { EditCategoryModal } from "@/components/edit-category-modal"
 import { AddPilotToCategoryModal } from "@/components/add-pilot-to-category-modal"
 import { Breadcrumb, BreadcrumbHome, BreadcrumbItem, BreadcrumbSeparator } from "@/components/ui/breadcrumb"
 import { Skeleton } from "@/components/ui/skeleton"
+import { EditPilotPointsModal } from "@/components/edit-pilot-points-modal"
 
 interface Category {
   id: string
@@ -51,6 +52,7 @@ interface CategoryPilot {
   id: string
   category_id: string
   pilot_id: string
+  initial_points: number
   pilot_profiles: Pilot
 }
 
@@ -215,6 +217,11 @@ export default function CategoryDetail({ params }: CategoryDetailProps) {
   const handlePilotAdded = async () => {
     await fetchCategoryPilots()
     toast.success("Lista de pilotos atualizada")
+  }
+
+  const handleInitialPointsUpdated = async () => {
+    await fetchCategoryPilots()
+    toast.success("Pontuação inicial atualizada")
   }
 
   const handleRemovePilot = async (pilotId: string) => {
@@ -521,27 +528,44 @@ export default function CategoryDetail({ params }: CategoryDetailProps) {
                               ? pilot.pilot_profiles[0].name 
                               : pilot.pilot_profiles.name}
                           </p>
-                          <p className="text-xs text-muted-foreground">
-                            {Array.isArray(pilot.pilot_profiles) 
-                              ? pilot.pilot_profiles[0].email 
-                              : pilot.pilot_profiles.email}
-                          </p>
+                          <div className="flex items-center gap-2">
+                            <p className="text-xs text-muted-foreground">
+                              {Array.isArray(pilot.pilot_profiles) 
+                                ? pilot.pilot_profiles[0].email 
+                                : pilot.pilot_profiles.email}
+                            </p>
+                            {pilot.initial_points > 0 && (
+                              <span className="text-xs bg-primary/10 text-primary px-1.5 py-0.5 rounded-full">
+                                +{pilot.initial_points} pts iniciais
+                              </span>
+                            )}
+                          </div>
                         </div>
                       </div>
                       {isOwner && (
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8 text-destructive hover:text-destructive"
-                          onClick={() => {
-                            const pilotProfile = Array.isArray(pilot.pilot_profiles) 
-                              ? pilot.pilot_profiles[0] 
-                              : pilot.pilot_profiles;
-                            handleRemovePilot(pilotProfile.id);
-                          }}
-                        >
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </Button>
+                        <div className="flex items-center">
+                          <EditPilotPointsModal
+                            categoryPilotId={pilot.id}
+                            pilotName={Array.isArray(pilot.pilot_profiles) 
+                              ? pilot.pilot_profiles[0].name 
+                              : pilot.pilot_profiles.name}
+                            initialPoints={pilot.initial_points || 0}
+                            onSuccess={handleInitialPointsUpdated}
+                          />
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 text-destructive hover:text-destructive"
+                            onClick={() => {
+                              const pilotProfile = Array.isArray(pilot.pilot_profiles) 
+                                ? pilot.pilot_profiles[0] 
+                                : pilot.pilot_profiles;
+                              handleRemovePilot(pilotProfile.id);
+                            }}
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
+                        </div>
                       )}
                     </div>
                   ))}

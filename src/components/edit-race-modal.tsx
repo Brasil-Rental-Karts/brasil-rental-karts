@@ -24,33 +24,37 @@ import {
 } from "@/components/ui/select"
 import { Edit, Loader2 } from "lucide-react"
 import { toast } from "sonner"
+import { Checkbox } from "@/components/ui/checkbox"
 
 interface Race {
-  id: string
+  id?: string
   championship_id: string
   name: string
-  description: string | null
-  date: string | null
-  location: string | null
-  track_layout: string | null
-  status: "scheduled" | "completed" | "cancelled"
+  description?: string | null
+  date?: string | null
+  location?: string | null
+  track_layout?: string | null
+  status?: "scheduled" | "completed" | "cancelled"
+  double_points?: boolean
 }
 
 interface EditRaceModalProps {
   race: Race
+  championship: any
   onSuccess: () => void
 }
 
-export function EditRaceModal({ race, onSuccess }: EditRaceModalProps) {
+export function EditRaceModal({ race, championship, onSuccess }: EditRaceModalProps) {
   const [open, setOpen] = useState(false)
-  const [name, setName] = useState("")
-  const [description, setDescription] = useState("")
-  const [date, setDate] = useState("")
-  const [time, setTime] = useState("")
-  const [location, setLocation] = useState("")
-  const [trackLayout, setTrackLayout] = useState("")
-  const [status, setStatus] = useState<"scheduled" | "completed" | "cancelled">("scheduled")
   const [loading, setLoading] = useState(false)
+  const [name, setName] = useState(race?.name || "")
+  const [description, setDescription] = useState(race?.description || "")
+  const [date, setDate] = useState<string>(race?.date ? new Date(race.date).toISOString().split('T')[0] : "")
+  const [time, setTime] = useState("")
+  const [location, setLocation] = useState(race?.location || "")
+  const [trackLayout, setTrackLayout] = useState(race?.track_layout || "")
+  const [status, setStatus] = useState<"scheduled" | "completed" | "cancelled">(race?.status || "scheduled")
+  const [doublePoints, setDoublePoints] = useState(race?.double_points || false)
   const supabase = createClientComponentClient()
 
   // Inicializa o formulário com os dados da etapa
@@ -61,16 +65,14 @@ export function EditRaceModal({ race, onSuccess }: EditRaceModalProps) {
       setLocation(race.location || "")
       setTrackLayout(race.track_layout || "")
       setStatus(race.status || "scheduled")
+      setDoublePoints(race.double_points || false)
 
       // Processar data e hora
       if (race.date) {
         const dateObj = new Date(race.date)
         
-        // Converter para o fuso horário local
-        const year = dateObj.getUTCFullYear()
-        const month = String(dateObj.getUTCMonth() + 1).padStart(2, '0')
-        const day = String(dateObj.getUTCDate()).padStart(2, '0')
-        setDate(`${year}-${month}-${day}`)
+        // Extrair data para formato YYYY-MM-DD
+        setDate(dateObj.toISOString().split('T')[0])
         
         // Formatar hora HH:MM
         const hours = String(dateObj.getUTCHours()).padStart(2, '0')
@@ -86,7 +88,7 @@ export function EditRaceModal({ race, onSuccess }: EditRaceModalProps) {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!name.trim()) {
-      toast.error("Nome da etapa é obrigatório")
+      toast.error("O nome da etapa é obrigatório")
       return
     }
 
@@ -120,7 +122,8 @@ export function EditRaceModal({ race, onSuccess }: EditRaceModalProps) {
           date: combinedDate,
           location,
           track_layout: trackLayout,
-          status
+          status,
+          double_points: doublePoints
         })
         .eq("id", race.id)
 
@@ -225,6 +228,19 @@ export function EditRaceModal({ race, onSuccess }: EditRaceModalProps) {
                 <SelectItem value="cancelled">Cancelada</SelectItem>
               </SelectContent>
             </Select>
+          </div>
+          <div className="space-y-2">
+            <div className="flex items-center space-x-2">
+              <Checkbox 
+                id="double-points" 
+                checked={doublePoints}
+                onCheckedChange={(checked) => setDoublePoints(checked as boolean)}
+              />
+              <Label htmlFor="double-points">Pontuação em dobro</Label>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Marque esta opção para calcular os pontos em dobro nesta etapa
+            </p>
           </div>
           <DialogFooter>
             <Button variant="outline" type="button" onClick={() => setOpen(false)}>

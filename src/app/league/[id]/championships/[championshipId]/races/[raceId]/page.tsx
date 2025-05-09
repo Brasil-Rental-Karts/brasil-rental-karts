@@ -69,6 +69,7 @@ interface Race {
   location: string | null
   track_layout: string | null
   status: "scheduled" | "completed" | "cancelled"
+  double_points: boolean
 }
 
 interface League {
@@ -931,8 +932,9 @@ export default function RaceDetail({ params }: RaceDetailProps) {
             <div className="flex items-center gap-2">
               {isOwner && race && (
                 <>
-                  <EditRaceModal 
-                    race={race} 
+                  <EditRaceModal
+                    race={race}
+                    championship={championship}
                     onSuccess={handleRaceUpdated}
                   />
                   <AlertDialog>
@@ -1022,6 +1024,30 @@ export default function RaceDetail({ params }: RaceDetailProps) {
                 </div>
               )}
             </div>
+            {race.status === "completed" && (
+              <div className="flex items-center gap-1.5 text-green-600 text-sm font-medium">
+                <CheckCircle className="h-4 w-4" />
+                Concluída
+              </div>
+            )}
+            {race.status === "cancelled" && (
+              <div className="flex items-center gap-1.5 text-red-600 text-sm font-medium">
+                <XIcon className="h-4 w-4" />
+                Cancelada
+              </div>
+            )}
+            {race.status === "scheduled" && (
+              <div className="flex items-center gap-1.5 text-blue-600 text-sm font-medium">
+                <Clock className="h-4 w-4" />
+                Agendada
+              </div>
+            )}
+            {race.double_points && (
+              <div className="flex items-center gap-1.5 text-amber-600 text-sm font-medium mt-2">
+                <Medal className="h-4 w-4" />
+                Pontuação em dobro
+              </div>
+            )}
           </CardContent>
         </Card>
 
