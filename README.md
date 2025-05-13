@@ -1,127 +1,147 @@
-# Brasil Rental Karts
+# Brasil Rental Karts 🏎️
 
 ![Logo BRK](public/brk_logo.svg)
 
-Uma plataforma completa para gestão de ligas de kart rental no Brasil. Disponibiliza ferramentas profissionais para organização de campeonatos, gerenciamento de pilotos e acompanhamento de resultados.
+A comprehensive platform for managing rental kart leagues in Brazil. Providing professional tools for championship organization, pilot management, and result tracking.
 
-## Visão Geral
+[![License: Proprietary](https://img.shields.io/badge/License-Proprietary-red.svg)](#proprietary-license)
+[![Next.js](https://img.shields.io/badge/Next.js-15-black)](https://nextjs.org/)
+[![React](https://img.shields.io/badge/React-19-blue)](https://reactjs.org/)
+[![TailwindCSS](https://img.shields.io/badge/TailwindCSS-4-38B2AC)](https://tailwindcss.com/)
 
-O Brasil Rental Karts (BRK) é uma solução digital desenvolvida para atender as necessidades específicas do mercado de kart rental no Brasil. A plataforma permite que organizadores de ligas criem e gerenciem competições de forma profissional, enquanto pilotos podem manter seus perfis, acompanhar resultados e conectar-se com a comunidade.
+## 🎯 Overview
 
-### Principais Funcionalidades
+Brasil Rental Karts (BRK) is a digital solution developed to meet the specific needs of the rental kart market in Brazil. The platform enables league organizers to create and manage competitions professionally, while pilots can maintain their profiles, track results, and connect with the community.
 
-#### Para Organizadores de Ligas
-- Criação e gerenciamento de campeonatos
-- Gestão de inscrições de pilotos
-- Controle de pontuações automáticas
-- Registro de resultados de corridas
-- Publicação de classificações e estatísticas
+## ✨ Key Features
 
-#### Para Pilotos
-- Criação de perfil personalizado
-- Histórico completo de resultados
-- Estatísticas de desempenho
-- Ranking na comunidade
-- Descoberta de novas competições
+### For League Organizers
+- Championship creation and management
+- Pilot registration management
+- Automatic scoring system
+- Race results recording
+- Rankings and statistics publication
 
-#### Comunidade Conectada
-- Compartilhamento de resultados
-- Descoberta de campeonatos
-- Integração entre diferentes ligas
-- Networking entre pilotos
+### For Pilots
+- Customizable profile creation
+- Complete results history
+- Performance statistics
+- Community ranking
+- Competition discovery
 
-## Tecnologias Utilizadas
+### Connected Community
+- Result sharing
+- Championship discovery
+- Cross-league integration
+- Pilot networking
 
-O Brasil Rental Karts foi desenvolvido utilizando tecnologias modernas para garantir performance, escalabilidade e uma excelente experiência do usuário:
+## 🛠️ Tech Stack
 
-- **Frontend**: Next.js 15 com React 19
-- **Estilização**: TailwindCSS 4 com sistema de design customizado
-- **UI Components**: Baseados na biblioteca shadcn/ui
-- **Ícones**: Lucide React
-- **Formulários**: React Hook Form com validação Zod
-- **Design System**: Sistema proprietário com tema personalizável e modo claro/escuro
+- **Frontend**: Next.js 15 with React 19
+- **Styling**: TailwindCSS 4 with custom design system
+- **UI Components**: Based on shadcn/ui library
+- **Icons**: Lucide React
+- **Forms**: React Hook Form with Zod validation
+- **Design System**: Proprietary system with customizable theme and light/dark mode
 
-## Instalação e Configuração
+## 📋 Prerequisites
 
-### Pré-requisitos
-- Node.js 18 ou superior
-- npm, yarn, pnpm ou bun
+- Node.js 18 or higher
+- npm, yarn, pnpm, or bun
 
-### Instalação
+## 🚀 Getting Started
+
+### Installation
 
 ```bash
-# Clone o repositório
+# Clone the repository
 git clone https://github.com/wernerjr/brasil-rental-karts.git
 cd brasil-rental-karts
 
-# Instale as dependências
+# Install dependencies
 npm install
-# ou
+# or
 yarn install
-# ou
+# or
 pnpm install
-# ou
+# or
 bun install
 ```
 
-### Executando em ambiente de desenvolvimento
+### Development Environment
 
 ```bash
 npm run dev
-# ou
+# or
 yarn dev
-# ou
+# or
 pnpm dev
-# ou
+# or
 bun dev
 ```
 
-Acesse [http://localhost:3000](http://localhost:3000) no seu navegador para visualizar a aplicação.
+Access [http://localhost:3000](http://localhost:3000) in your browser to view the application.
 
-## Qualidade de Código e Testes
-
-O projeto utiliza ferramentas modernas para garantir a qualidade do código e manter os padrões de desenvolvimento:
-
-### Testes
+## 🧪 Quality and Testing
 
 ```bash
-# Executar todos os testes
-npm run test
+# Start development server
+npm run dev
 
-# Executar testes em modo watch
-npm run test:watch
+# Build for production
+npm run build
 
-# Executar testes com relatório de cobertura
-npm run test:coverage
+# Start production server
+npm run start
+
+# Run linting
+npm run lint
 ```
 
-## Estrutura do Projeto
+## 📁 Project Structure
 
 ```
 brasil-rental-karts/
-├── public/           # Arquivos estáticos (imagens, favicon, etc.)
-├── src/              # Código fonte da aplicação
-│   ├── app/          # Páginas da aplicação (Next.js App Router)
-│   ├── components/   # Componentes reutilizáveis
-│   │   ├── layout/   # Componentes de layout (navbar, footer, etc.)
-│   │   └── ui/       # Componentes de UI (botões, cards, etc.)
-│   └── lib/          # Utilitários e funções auxiliares
-└── ...               # Arquivos de configuração
+├── public/           # Static files (images, favicon, etc.)
+├── src/              # Source code
+│   ├── app/          # Application pages (Next.js App Router)
+│   ├── components/   # Reusable components
+│   │   ├── layout/   # Layout components (navbar, footer, etc.)
+│   │   └── ui/       # UI components (buttons, cards, etc.)
+│   └── lib/          # Utilities and helper functions
+└── ...               # Configuration files
 ```
 
-## Modelo de Negócio
+## 💼 Business Model
 
-O Brasil Rental Karts opera com um modelo de negócio baseado em assinaturas, oferecendo diferentes planos para organizadores de ligas e pilotos:
+### League Organizer Plans
+- **Free**: Single league management, up to 20 pilots
+- **Professional**: Multiple league management, up to 100 pilots, advanced statistics
+- **Enterprise**: Custom solution for large leagues with specific needs
 
-### Planos para Organizadores
-- **Gratuito**: Gerenciamento de uma liga, até 20 pilotos
-- **Profissional**: Gerenciamento de múltiplas ligas, até 100 pilotos, estatísticas avançadas
-- **Enterprise**: Solução personalizada para grandes ligas com necessidades específicas
+### Pilot Plans
+- **Free**: Basic profile and league participation
+- **Premium**: Advanced statistics, complete history, and exclusive features
 
-### Planos para Pilotos
-- **Gratuito**: Perfil básico e participação em ligas
-- **Premium**: Estatísticas avançadas, histórico completo e recursos exclusivos
+## 🔒 Proprietary License
 
-## Propriedade Intelectual
+This project is private and proprietary. All code, design, and content are protected by copyright and may not be copied, modified, or distributed without express authorization. Access to this repository is restricted to authorized collaborators only.
 
-Este projeto é privado e proprietário. Todo o código, design e conteúdo estão protegidos por direitos autorais e não podem ser copiados, modificados ou distribuídos sem autorização expressa. O acesso a este repositório é restrito apenas a colaboradores autorizados.
+## 🤝 Contributing
+
+For authorized collaborators:
+1. Create a feature branch (`git checkout -b feature/AmazingFeature`)
+2. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
+3. Push to the branch (`git push origin feature/AmazingFeature`)
+4. Create a Pull Request
+
+## 📞 Support
+
+For support and inquiries:
+1. Check existing issues
+2. Create a new issue with detailed description
+3. Contact the development team through official channels
+
+---
+
+Made with ❤️ for the Brazilian karting community
