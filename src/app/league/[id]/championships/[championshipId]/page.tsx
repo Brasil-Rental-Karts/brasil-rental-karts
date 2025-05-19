@@ -30,6 +30,7 @@ import {
   Route
 } from "lucide-react"
 import { Skeleton } from "@/components/ui/skeleton"
+import { ExportStandingsPDF } from "@/components/export-standings-pdf"
 
 interface Championship {
   id: string
@@ -1248,8 +1249,14 @@ export default function ChampionshipDetail({ params }: ChampionshipDetailProps) 
               <>
                 <div className="flex items-center justify-between">
                   <h2 className="text-xl font-semibold">Classificação Geral</h2>
+                  <ExportStandingsPDF 
+                    championshipName={championship.name}
+                    championshipLogo={championship.logo_url}
+                    categoriesStandings={pilotStandings}
+                    categoryNames={Object.fromEntries(categories.map(cat => [cat.id, cat.name]))}
+                    leagueName={league.name}
+                  />
                 </div>
-                
                 {categories.length === 0 ? (
                   <div className="flex flex-col items-center justify-center py-12 text-center">
                     <div className="bg-muted/50 p-4 rounded-full mb-4">
